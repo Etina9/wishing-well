@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#6f55ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LEVEL UP">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="icon" href="./icon-192.png">
+  <title>LEVEL UP LIFE</title>
+  <style>
+    :root{
+      --bg:#f6f2ff;--panel:#fff;--text:#2a2337;--muted:#7e758f;
+      --accent:#6f55ff;--accent2:#ff74a8;--line:#ece6f5;--good:#23a86b;
+      --warn:#c87a00;--danger:#d94b59;--shadow:0 12px 34px rgba(70,45,110,.10);
+      --safe-bottom:env(safe-area-inset-bottom,0px);
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{
+      margin:0;background:
+        radial-gradient(circle at 0 -10%,#e9deff 0,transparent 35%),
+        radial-gradient(circle at 100% 0,#ffe0ec 0,transparent 28%),
+        var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",Arial,sans-serif;
+      min-height:100vh;
+      padding-bottom:calc(86px + var(--safe-bottom));
+      -webkit-tap-highlight-color:transparent;
+    }
+    button,input,select,textarea{font:inherit}
+    button{touch-action:manipulation}
+    .app{max-width:760px;margin:0 auto;padding:16px}
+    .hero{
+      color:#fff;padding:20px;border-radius:26px;box-shadow:var(--shadow);
+      background:linear-gradient(135deg,#6f55ff,#9d6fff 52%,#ff79ab);
+      position:relative;overflow:hidden;margin-bottom:14px;
+    }
+    .hero:after{content:"✦";position:absolute;right:16px;top:4px;font-size:88px;opacity:.12}
+    .hero h1{margin:0;font-size:30px;letter-spacing:-.8px}
+    .hero p{margin:5px 0 18px;opacity:.88}
+    .score-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+    .score{font-size:42px;font-weight:900;line-height:1}
+    .score small{font-size:15px;font-weight:700;opacity:.85}
+    .mini-stat{text-align:right;font-size:13px;opacity:.9}
+    .view{display:none}.view.active{display:block}
+    .card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:22px;padding:17px;margin-bottom:14px;box-shadow:var(--shadow)}
+    .card h2{font-size:19px;margin:0 0 12px}
+    .sub{font-size:13px;color:var(--muted);line-height:1.55;margin:-5px 0 12px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{
+      border:0;border-radius:13px;padding:10px 13px;font-weight:800;
+      background:#eee9ff;color:#5d47c8;cursor:pointer
+    }
+    .btn.primary{background:linear-gradient(135deg,var(--accent),#8a67ff);color:#fff}
+    .btn.pink{background:linear-gradient(135deg,var(--accent2),#ff99bc);color:white}
+    .btn.good{background:#e8f8f0;color:#178655}
+    .btn.danger{background:#fff0f2;color:var(--danger)}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{margin-bottom:10px}
+    .field label{display:block;font-size:12px;color:var(--muted);margin:0 0 5px}
+    input,select,textarea{
+      width:100%;border:1px solid #ded7ea;border-radius:12px;padding:11px 12px;background:white;color:var(--text);
+      outline:none;
+    }
+    textarea{min-height:76px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:#9b87ff;box-shadow:0 0 0 3px rgba(111,85,255,.09)}
+    .list{display:grid;gap:9px}
+    .item{border:1px solid var(--line);border-radius:17px;padding:13px;background:#fff}
+    .item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .item h3{font-size:15px;margin:0 0 6px}
+    .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .tag{font-size:11px;padding:4px 7px;border-radius:999px;background:#f3effa;color:#6c6380}
+    .pts{font-weight:900;color:#654ce2;white-space:nowrap}
+    .note{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.45}
+    .item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .item-actions .btn{padding:7px 9px;font-size:12px}
+    .pool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .pool{
+      padding:14px;border-radius:18px;border:1px solid var(--line);
+      background:linear-gradient(145deg,#fff,#faf7ff)
+    }
+    .pool .cost{font-size:25px;font-weight:900;color:#6047dc}
+    .pool small{color:var(--muted)}
+    .pool ul{padding-left:18px;margin:10px 0;color:#544c61;font-size:12px;min-height:36px}
+    .pool li{margin:4px 0}
+    .boss{background:linear-gradient(135deg,#281e3d,#4d386d);color:white;border:none}
+    .boss .tag{background:rgba(255,255,255,.13);color:#eee7ff}
+    .boss .pts{color:#ffd978}
+    .boss .note{color:#d9d0e9}
+    .wish-row{display:grid;grid-template-columns:1fr 120px;gap:8px}
+    .history{max-height:330px;overflow:auto;display:grid;gap:7px}
+    .history-row{padding:10px 11px;border-radius:13px;background:#faf8fd;font-size:12px}
+    .history-row strong{display:block;margin-bottom:3px}
+    .history-row span{color:var(--muted)}
+    .empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed #ddd4eb;border-radius:15px;font-size:13px}
+    .bottom{
+      position:fixed;z-index:30;left:0;right:0;bottom:0;
+      background:rgba(255,255,255,.92);backdrop-filter:blur(16px);
+      border-top:1px solid #e9e2f1;
+      padding:7px 10px calc(7px + var(--safe-bottom));
+    }
+    .bottom-inner{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+    .nav{
+      border:0;background:transparent;color:#81788e;padding:7px 2px;border-radius:13px;font-size:11px;font-weight:700
+    }
+    .nav i{display:block;font-style:normal;font-size:21px;margin-bottom:2px}
+    .nav.active{background:#f0ebff;color:#6047dc}
+    .sheet{
+      position:fixed;z-index:50;inset:0;background:rgba(28,20,42,.42);
+      display:none;align-items:flex-end;justify-content:center
+    }
+    .sheet.show{display:flex}
+    .sheet-panel{
+      width:min(760px,100%);max-height:88vh;overflow:auto;background:white;
+      border-radius:24px 24px 0 0;padding:18px 16px calc(18px + var(--safe-bottom));
+    }
+    .sheet-panel h2{margin:0 0 14px}
+    .scratch{
+      margin-top:12px;min-height:145px;border-radius:20px;display:grid;place-items:center;text-align:center;padding:18px;
+      background:repeating-linear-gradient(135deg,#c4c5ce 0 16px,#b4b6c2 16px 32px);
+      color:#4e4f5c;font-size:22px;font-weight:900;letter-spacing:2px;position:relative;overflow:hidden
+    }
+    .scratch.revealed{background:linear-gradient(135deg,#6f55ff,#ff75aa);color:white;letter-spacing:0}
+    .scratch .small{font-size:12px;font-weight:600;opacity:.85;margin-top:5px}
+    .install-tip{font-size:12px;background:#fff8e7;color:#8b6400;padding:10px 12px;border-radius:13px;margin-top:10px;display:none}
+    @media(max-width:520px){
+      .app{padding:12px}.grid2,.pool-grid{grid-template-columns:1fr}.wish-row{grid-template-columns:1fr}
+      .hero{border-radius:22px}.score{font-size:38px}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <section class="hero">
+    <h1>🎮 LEVEL UP LIFE</h1>
+    <p>把困难的事做小一点，把反馈做快一点。</p>
+    <div class="score-row">
+      <div class="score"><span id="score">0</span> <small>积分</small></div>
+      <div class="mini-stat">累计获得 <b id="earned">0</b><br>已兑换 <b id="spent">0</b></div>
+    </div>
+    <div id="installTip" class="install-tip">iPhone Safari：点“分享” → “添加到主屏幕”，之后就能像 App 一样打开。</div>
+  </section>
+
+  <main id="tasksView" class="view active">
+    <section class="card">
+      <h2>📋 任务池</h2>
+      <p class="sub">以 0.5～2 分的小任务为主，完成就即时加分。任务作为模板保留，可以重复完成。</p>
+      <div class="toolbar"><button class="btn primary" onclick="openTaskSheet()">＋ 添加任务</button></div>
+      <div id="taskList" class="list" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card">
+      <h2>🧾 最近记录</h2>
+      <div id="history" class="history"></div>
+    </section>
+  </main>
+
+  <main id="drawView" class="view">
+    <section class="card">
+      <h2>🎁 奖励池</h2>
+      <p class="sub">你定的规则：5 分≈20 元以内，10 分≈50 元，20 分≈100 元，50 分≈300 元。可以给每档添加具体心愿。</p>
+      <div id="poolGrid" class="pool-grid"></div>
+      <div id="scratch" class="scratch">选择一个奖池</div>
+    </section>
+  </main>
+
+  <main id="wishView" class="view">
+    <section class="card">
+      <h2>💗 心愿池</h2>
+      <p class="sub">看到想买的先放进来，再决定归到哪个积分档。</p>
+      <div class="wish-row">
+        <input id="wishName" placeholder="例如：斑马笔 / 玩偶 / 黑胶">
+        <select id="wishPool">
+          <option value="5">5分 · 20元以内</option>
+          <option value="10">10分 · 50元以内</option>
+          <option value="20">20分 · 100元以内</option>
+          <option value="50">50分 · 300元以内</option>
+          <option value="boss">Boss大奖</option>
+        </select>
+      </div>
+      <button class="btn pink" onclick="addWish()" style="margin-top:8px">加入心愿</button>
+      <div id="wishList" class="list" style="margin-top:12px"></div>
+    </section>
+  </main>
+
+  <main id="moreView" class="view">
+    <section class="card">
+      <h2>🔥 Boss 挑战</h2>
+      <p class="sub">Boss 不走普通积分。完成后直接获得你写好的大奖兑换权。</p>
+      <button class="btn primary" onclick="openBossSheet()">＋ 新增 Boss</button>
+      <div id="bossList" class="list" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card">
+      <h2>⚙️ 数据与设置</h2>
+      <div class="toolbar">
+        <button class="btn" onclick="exportData()">💾 导出存档</button>
+        <label class="btn" style="display:inline-block">
+          📥 导入存档
+          <input type="file" accept=".json,application/json" onchange="importData(event)" style="display:none">
+        </label>
+        <button class="btn danger" onclick="resetAll()">清空数据</button>
+      </div>
+      <p class="sub" style="margin-top:12px">数据默认保存在当前设备的浏览器里。定期导出 JSON 存档，换手机/浏览器时可以恢复。</p>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom">
+  <div class="bottom-inner">
+    <button class="nav active" data-view="tasksView" onclick="switchView(this)"><i>📋</i>任务</button>
+    <button class="nav" data-view="drawView" onclick="switchView(this)"><i>🎁</i>抽奖</button>
+    <button class="nav" data-view="wishView" onclick="switchView(this)"><i>💗</i>心愿</button>
+    <button class="nav" data-view="moreView" onclick="switchView(this)"><i>⚙️</i>更多</button>
+  </div>
+</nav>
+
+<div id="taskSheet" class="sheet" onclick="sheetBackdrop(event,'taskSheet')">
+  <div class="sheet-panel">
+    <h2 id="taskSheetTitle">添加任务</h2>
+    <div class="field"><label>任务名称</label><input id="taskName" placeholder="例如：整理一个面试问题答案"></div>
+    <div class="grid2">
+      <div class="field"><label>主线</label>
+        <select id="taskCategory">
+          <option>减肥 / 运动</option><option>工作 / 面试</option><option>语言学习</option><option>其他</option>
+        </select>
+      </div>
+      <div class="field"><label>积分</label><input id="taskPoints" type="number" min="0.5" step="0.5" value="1"></div>
+    </div>
+    <div class="field"><label>完成标准（可选）</label><textarea id="taskNote" placeholder="写清楚怎样算完成，避免临时放水。"></textarea></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveTask()">保存</button>
+      <button class="btn" onclick="closeSheet('taskSheet')">取消</button>
+    </div>
+  </div>
+</div>
+
+<div id="bossSheet" class="sheet" onclick="sheetBackdrop(event,'bossSheet')">
+  <div class="sheet-panel">
+    <h2>新增 Boss</h2>
+    <div class="field"><label>Boss 挑战</label><input id="bossName" placeholder="例如：完成本月求职冲刺"></div>
+    <div class="field"><label>完成条件</label><textarea id="bossCondition" placeholder="例如：3次模拟面试 + 20个岗位投递"></textarea></div>
+    <div class="field"><label>直接兑换的大奖</label><input id="bossReward" placeholder="例如：旅行基金 / 500元大心愿"></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveBoss()">保存</button>
+      <button class="btn" onclick="closeSheet('bossSheet')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
+const STORAGE='level-up-life-v6';
+
+const defaults={
+  version:6, score:0, earned:0, spent:0,
+  tasks:[
+    {id:uid(),name:'完成30分钟运动',category:'减肥 / 运动',points:1,note:''},
+    {id:uid(),name:'完成一次力量训练',category:'减肥 / 运动',points:1,note:''},
+    {id:uid(),name:'记录当天饮食',category:'减肥 / 运动',points:.5,note:''},
+    {id:uid(),name:'整理一个面试问题答案',category:'工作 / 面试',points:1,note:'整理到能够脱稿说清楚。'},
+    {id:uid(),name:'录音回答一个面试题',category:'工作 / 面试',points:1,note:''},
+    {id:uid(),name:'完成一次完整模拟面试',category:'工作 / 面试',points:3,note:''},
+    {id:uid(),name:'Anki复习50张',category:'语言学习',points:.5,note:''},
+    {id:uid(),name:'英语口语练习30分钟',category:'语言学习',points:1,note:''},
+    {id:uid(),name:'整理10个可复用表达',category:'语言学习',points:1,note:''}
+  ],
+  pools:[
+    {cost:5,budget:'20元以内',items:[]},
+    {cost:10,budget:'50元以内',items:[]},
+    {cost:20,budget:'100元以内',items:[]},
+    {cost:50,budget:'300元以内',items:[]}
+  ],
+  wishes:[],
+  bosses:[
+    {id:uid(),name:'求职冲刺 Boss',condition:'完成 3 次模拟面试',reward:'自定义一个大奖',status:'active'}
+  ],
+  history:[]
+};
+
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function loadState(){
+  try{
+    const v6=JSON.parse(localStorage.getItem(STORAGE)||'null');
+    if(v6) return normalize(v6);
+    const old=JSON.parse(localStorage.getItem('life_mobile')||'null') || JSON.parse(localStorage.getItem('life_v4')||'null');
+    if(old){
+      const migrated=clone(defaults);
+      migrated.score=Number(old.score||0);
+      migrated.earned=migrated.score;
+      if(Array.isArray(old.tasks)&&old.tasks.length){
+        migrated.tasks=old.tasks.map(t=>{
+          if(Array.isArray(t)) return {id:uid(),name:t[0]||'未命名任务',category:t[1]||'其他',points:Number(t[2]||1),note:''};
+          return {id:uid(),name:t.name||'未命名任务',category:t.type||t.category||'其他',points:Number(t.point||t.points||1),note:t.note||''};
+        });
+      }
+      if(Array.isArray(old.wishes)){
+        migrated.wishes=old.wishes.map(w=>({id:uid(),name:typeof w==='string'?w:(w.name||'未命名心愿'),pool:String(w.pool||'5')}));
+      }
+      const oldBoss=old.boss||old.bosses;
+      if(Array.isArray(oldBoss)){
+        migrated.bosses=oldBoss.map(b=>({id:uid(),name:typeof b==='string'?b:(b.name||'未命名 Boss'),condition:b.condition||'',reward:b.reward||'自定义大奖',status:b.status||'active'}));
+      }
+      return migrated;
+    }
+  }catch(e){}
+  return clone(defaults);
+}
+function normalize(s){
+  const out=Object.assign(clone(defaults),s);
+  out.score=Number(out.score||0);out.earned=Number(out.earned||0);out.spent=Number(out.spent||0);
+  if(!Array.isArray(out.tasks))out.tasks=[];
+  if(!Array.isArray(out.pools))out.pools=clone(defaults.pools);
+  if(!Array.isArray(out.wishes))out.wishes=[];
+  if(!Array.isArray(out.bosses))out.bosses=[];
+  if(!Array.isArray(out.history))out.history=[];
+  return out;
+}
+let state=loadState();
+let editingTaskId=null;
+
+function save(){localStorage.setItem(STORAGE,JSON.stringify(state));render()}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function fmt(n){return Number(n).toFixed(1).replace(/\.0$/,'')}
+function now(){return new Date().toLocaleString()}
+function log(title,delta=''){state.history.unshift({id:uid(),time:now(),title,delta});state.history=state.history.slice(0,150)}
+
+function switchView(btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));
+  document.getElementById(btn.dataset.view).classList.add('active');btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function openTaskSheet(id=null){
+  editingTaskId=id;document.getElementById('taskSheetTitle').textContent=id?'编辑任务':'添加任务';
+  if(id){
+    const t=state.tasks.find(x=>x.id===id);
+    $('taskName').value=t.name;$('taskCategory').value=t.category;$('taskPoints').value=t.points;$('taskNote').value=t.note||'';
+  }else{
+    $('taskName').value='';$('taskCategory').value='减肥 / 运动';$('taskPoints').value=1;$('taskNote').value='';
+  }
+  document.getElementById('taskSheet').classList.add('show');
+}
+function closeSheet(id){document.getElementById(id).classList.remove('show')}
+function sheetBackdrop(e,id){if(e.target.id===id)closeSheet(id)}
+function saveTask(){
+  const name=$('taskName').value.trim(), points=Number($('taskPoints').value);
+  if(!name||points<=0)return alert('请填写任务名称和有效积分。');
+  if(editingTaskId){
+    Object.assign(state.tasks.find(x=>x.id===editingTaskId),{name,category:$('taskCategory').value,points,note:$('taskNote').value.trim()});
+  }else{
+    state.tasks.unshift({id:uid(),name,category:$('taskCategory').value,points,note:$('taskNote').value.trim()});
+  }
+  closeSheet('taskSheet');save();
+}
+function completeTask(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t)return;
+  state.score+=Number(t.points);state.earned+=Number(t.points);
+  log('完成任务：'+t.name,'+'+fmt(t.points)+' 分');save();
+}
+function deleteTask(id){
+  if(!confirm('确定删除这个任务模板吗？'))return;
+  state.tasks=state.tasks.filter(x=>x.id!==id);save();
+}
+
+function addWish(){
+  const name=$('wishName').value.trim();if(!name)return;
+  state.wishes.unshift({id:uid(),name,pool:$('wishPool').value});
+  if($('wishPool').value!=='boss'){
+    const p=state.pools.find(x=>String(x.cost)===String($('wishPool').value));
+    if(p&&!p.items.includes(name))p.items.push(name);
+  }
+  $('wishName').value='';save();
+}
+function deleteWish(id){
+  const w=state.wishes.find(x=>x.id===id);
+  state.wishes=state.wishes.filter(x=>x.id!==id);
+  if(w&&w.pool!=='boss'){
+    const p=state.pools.find(x=>String(x.cost)===String(w.pool));
+    if(p)p.items=p.items.filter(x=>x!==w.name);
+  }
+  save();
+}
+
+function addPoolItem(cost){
+  const p=state.pools.find(x=>x.cost===cost);
+  const name=prompt(cost+'分奖池（'+p.budget+'）新增奖励：');
+  if(name&&name.trim()){p.items.push(name.trim());save()}
+}
+function deletePoolItem(cost,index){
+  const p=state.pools.find(x=>x.cost===cost);p.items.splice(index,1);save();
+}
+function draw(cost){
+  const p=state.pools.find(x=>x.cost===cost);
+  if(state.score<cost)return alert('积分不足，还差 '+fmt(cost-state.score)+' 分。');
+  if(!p.items.length)return alert('这个奖池还是空的。先添加至少一个奖励。');
+  state.score-=cost;state.spent+=cost;
+  const prize=p.items[Math.floor(Math.random()*p.items.length)];
+  log('抽取 '+cost+' 分奖池：'+prize,'-'+cost+' 分');
+  const s=document.getElementById('scratch');
+  s.className='scratch';
+  s.innerHTML='点击刮开<div class="small">积分已经扣除，结果已锁定</div>';
+  s.onclick=()=>{
+    s.className='scratch revealed';
+    s.innerHTML='<div>🎉 '+esc(prize)+'<div class="small">'+cost+' 分 · '+esc(p.budget)+'</div></div>';
+    s.onclick=null;
+  };
+  save();
+}
+function physicalDraw(cost){
+  if(state.score<cost)return alert('积分不足，还差 '+fmt(cost-state.score)+' 分。');
+  if(!confirm('确认扣除 '+cost+' 分，然后去刮你的实体卡吗？'))return;
+  state.score-=cost;state.spent+=cost;
+  log('实体刮卡：'+cost+' 分奖池','-'+cost+' 分');
+  save();
+}
+
+function openBossSheet(){$('bossName').value='';$('bossCondition').value='';$('bossReward').value='';document.getElementById('bossSheet').classList.add('show')}
+function saveBoss(){
+  const name=$('bossName').value.trim();if(!name)return alert('请填写 Boss 名称。');
+  state.bosses.unshift({id:uid(),name,condition:$('bossCondition').value.trim(),reward:$('bossReward').value.trim()||'自定义大奖',status:'active'});
+  closeSheet('bossSheet');save();
+}
+function completeBoss(id){
+  const b=state.bosses.find(x=>x.id===id);if(!b)return;
+  b.status='claimable';log('Boss 完成：'+b.name,'可兑换大奖');save();
+}
+function claimBoss(id){
+  const b=state.bosses.find(x=>x.id===id);if(!b)return;
+  if(!confirm('确认兑换大奖：'+b.reward+'？'))return;
+  b.status='claimed';log('Boss 大奖已兑换：'+b.reward,'🎁');save();
+}
+function deleteBoss(id){if(confirm('删除这个 Boss？')){state.bosses=state.bosses.filter(x=>x.id!==id);save()}}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='level-up-life-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);
+}
+function importData(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{state=normalize(JSON.parse(r.result));save();alert('存档导入成功。')}catch(err){alert('导入失败：不是有效的存档文件。')}};
+  r.readAsText(f);e.target.value='';
+}
+function resetAll(){
+  if(confirm('确定清空全部任务、积分、Boss、心愿和记录吗？这个操作不能撤销。')){
+    state=clone(defaults);save();
+  }
+}
+
+function render(){
+  $('score').textContent=fmt(state.score);$('earned').textContent=fmt(state.earned);$('spent').textContent=fmt(state.spent);
+  $('taskList').innerHTML=state.tasks.length?state.tasks.map(t=>`
+    <div class="item">
+      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">+${fmt(t.points)}</div></div>
+      ${t.note?`<div class="note">${esc(t.note)}</div>`:''}
+      <div class="item-actions"><button class="btn good" onclick="completeTask('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
+    </div>`).join(''):'<div class="empty">还没有任务，先加一个很小、能马上做的。</div>';
+
+  $('poolGrid').innerHTML=state.pools.map(p=>`
+    <div class="pool">
+      <div class="cost">${p.cost} 分</div><small>${esc(p.budget)}</small>
+      ${p.items.length?`<ul>${p.items.map((x,i)=>`<li>${esc(x)} <button class="btn danger" style="padding:2px 6px;font-size:10px" onclick="deletePoolItem(${p.cost},${i})">×</button></li>`).join('')}</ul>`:'<div class="note">还没有具体奖品</div>'}
+      <div class="item-actions">
+        <button class="btn" onclick="addPoolItem(${p.cost})">＋ 奖品</button>
+        <button class="btn primary" onclick="draw(${p.cost})">线上抽</button>
+        <button class="btn pink" onclick="physicalDraw(${p.cost})">实体刮卡</button>
+      </div>
+    </div>`).join('');
+
+  $('wishList').innerHTML=state.wishes.length?state.wishes.map(w=>`
+    <div class="item"><div class="item-top"><div><h3>${esc(w.name)}</h3><span class="tag">${w.pool==='boss'?'Boss大奖':w.pool+'分奖池'}</span></div><button class="btn danger" onclick="deleteWish('${w.id}')">删除</button></div></div>`).join(''):'<div class="empty">想买的先扔进来，别急着下单。</div>';
+
+  $('bossList').innerHTML=state.bosses.length?state.bosses.map(b=>`
+    <div class="item boss">
+      <div class="item-top"><div><h3>🔥 ${esc(b.name)}</h3><div class="meta"><span class="tag">${b.status==='active'?'进行中':b.status==='claimable'?'已完成 · 待兑换':'大奖已兑换'}</span></div></div><div class="pts">大奖</div></div>
+      ${b.condition?`<div class="note">条件：${esc(b.condition)}</div>`:''}
+      <div class="note">奖励：${esc(b.reward)}</div>
+      <div class="item-actions">
+        ${b.status==='active'?`<button class="btn good" onclick="completeBoss('${b.id}')">完成 Boss</button>`:''}
+        ${b.status==='claimable'?`<button class="btn pink" onclick="claimBoss('${b.id}')">兑换大奖</button>`:''}
+        <button class="btn danger" onclick="deleteBoss('${b.id}')">删除</button>
+      </div>
+    </div>`).join(''):'<div class="empty">还没有 Boss。</div>';
+
+  $('history').innerHTML=state.history.length?state.history.map(h=>`<div class="history-row"><strong>${esc(h.title)} ${h.delta?('· '+esc(h.delta)):''}</strong><span>${esc(h.time)}</span></div>`).join(''):'<div class="empty">完成任务和兑换奖励后会记录在这里。</div>';
+}
+if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad|iPod/i.test(navigator.userAgent)){
+  document.getElementById('installTip').style.display='block';
+}
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+render();
+</script>
+</body>
+</html>

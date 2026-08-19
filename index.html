@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#6f55ff">
+  <meta name="theme-color" content="#416b80">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LEVEL UP">
@@ -13,19 +13,16 @@
   <title>LEVEL UP LIFE</title>
   <style>
     :root{
-      --bg:#f6f2ff;--panel:#fff;--text:#2a2337;--muted:#7e758f;
-      --accent:#6f55ff;--accent2:#ff74a8;--line:#ece6f5;--good:#23a86b;
-      --warn:#c87a00;--danger:#d94b59;--shadow:0 12px 34px rgba(70,45,110,.10);
+      --bg:#f6f4ef;--panel:#fffefa;--text:#27343a;--muted:#70787c;
+      --accent:#416b80;--accent2:#c87560;--line:#d8dfe0;--good:#3d806d;
+      --warn:#a47b35;--danger:#b85d56;--shadow:0 3px 14px rgba(48,66,73,.08);
       --safe-top:env(safe-area-inset-top,0px);
       --safe-bottom:env(safe-area-inset-bottom,0px);
     }
     *{box-sizing:border-box}
     html{background:var(--bg)}
     body{
-      margin:0;background:
-        radial-gradient(circle at 0 -10%,#e9deff 0,transparent 35%),
-        radial-gradient(circle at 100% 0,#ffe0ec 0,transparent 28%),
-        var(--bg);
+      margin:0;background:var(--bg);
       color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",Arial,sans-serif;
       min-height:100vh;
@@ -36,30 +33,34 @@
     button{touch-action:manipulation}
     .app{max-width:760px;margin:0 auto;padding:calc(16px + var(--safe-top)) 16px 16px}
     .hero{
-      color:#fff;padding:20px;border-radius:26px;box-shadow:var(--shadow);
-      background:linear-gradient(135deg,#6f55ff,#9d6fff 52%,#ff79ab);
+      color:var(--text);padding:20px;border-radius:14px;box-shadow:var(--shadow);
+      background:var(--panel);border:1px solid var(--line);
       position:relative;overflow:hidden;margin-bottom:14px;
     }
-    .hero:after{content:"✦";position:absolute;right:16px;top:4px;font-size:88px;opacity:.12}
-    .hero h1{margin:0;font-size:30px;letter-spacing:-.8px}
-    .hero p{margin:5px 0 18px;opacity:.88}
+    .hero:after{content:""}
+    .hero h1{margin:0;font-size:28px;letter-spacing:-.4px;font-family:"Songti SC","STSong",serif;color:#294b5b}
+    .hero p{margin:5px 0 18px;color:var(--muted)}
     .score-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
     .score{font-size:42px;font-weight:900;line-height:1}
     .score small{font-size:15px;font-weight:700;opacity:.85}
     .mini-stat{text-align:right;font-size:13px;opacity:.9}
     .view{display:none}.view.active{display:block}
-    .card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:22px;padding:17px;margin-bottom:14px;box-shadow:var(--shadow)}
+    .draw-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;padding:4px;border:1px solid var(--line);border-radius:10px;background:#eaf0f1}
+    .draw-tab{min-height:44px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:800;cursor:pointer}
+    .draw-tab.active{background:var(--panel);color:var(--accent);box-shadow:0 1px 4px rgba(48,66,73,.10)}
+    .draw-panel{display:none}.draw-panel.active{display:block}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px;margin-bottom:14px;box-shadow:var(--shadow)}
     .card h2{font-size:19px;margin:0 0 12px}
     .sub{font-size:13px;color:var(--muted);line-height:1.55;margin:-5px 0 12px}
     .toolbar{display:flex;gap:8px;flex-wrap:wrap}
     .btn{
-      border:0;border-radius:13px;padding:10px 13px;font-weight:800;
-      background:#eee9ff;color:#5d47c8;cursor:pointer
+      min-height:44px;border:1px solid #cbd6d8;border-radius:8px;padding:9px 13px;font-weight:800;
+      background:#edf2f2;color:#345764;cursor:pointer
     }
-    .btn.primary{background:linear-gradient(135deg,var(--accent),#8a67ff);color:#fff}
-    .btn.pink{background:linear-gradient(135deg,var(--accent2),#ff99bc);color:white}
-    .btn.good{background:#e8f8f0;color:#178655}
-    .btn.danger{background:#fff0f2;color:var(--danger)}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.pink{background:var(--accent2);border-color:var(--accent2);color:white}
+    .btn.good{background:#e5f2ed;color:#2f765f;border-color:#b9d7ca}
+    .btn.danger{background:#faece9;color:var(--danger);border-color:#e4c2bd}
     .btn:disabled{opacity:.4;cursor:not-allowed}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .field{margin-bottom:10px}
@@ -71,78 +72,118 @@
     textarea{min-height:76px;resize:vertical}
     input:focus,select:focus,textarea:focus{border-color:#9b87ff;box-shadow:0 0 0 3px rgba(111,85,255,.09)}
     .list{display:grid;gap:9px}
-    .item{border:1px solid var(--line);border-radius:17px;padding:13px;background:#fff}
+    .item{border:1px solid var(--line);border-radius:10px;padding:13px;background:var(--panel)}
     .item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
     .item h3{font-size:15px;margin:0 0 6px}
     .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-    .tag{font-size:11px;padding:4px 7px;border-radius:999px;background:#f3effa;color:#6c6380}
-    .pts{font-weight:900;color:#654ce2;white-space:nowrap}
+    .tag{font-size:11px;padding:4px 7px;border-radius:4px;background:#edf2f2;color:#526a72;border:1px solid #d4dfe0}
+    .pts{font-weight:900;color:var(--accent);white-space:nowrap}
     .note{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.45}
     .item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
     .item-actions .btn{padding:7px 9px;font-size:12px}
-    .challenge-card{background:linear-gradient(145deg,#fff,#faf7ff)}
-    .challenge-card.claimable{border-color:#bde8d0;background:#f5fff9}
-    .challenge-card.expired{opacity:.78;background:#faf8fd}
+    .challenge-card{background:#fffdf8}
+    .challenge-card.claimable{border-color:#abd1c3;background:#f3faf7}
+    .challenge-card.expired{opacity:.78;background:#f5f1ea}
     .challenge-card.claimed{opacity:.7}
-    .progress-track{height:8px;border-radius:999px;background:#eee9f8;overflow:hidden;margin:10px 0 7px}
-    .progress-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s ease}
+    .progress-track{height:8px;border-radius:999px;background:#e3e9e9;overflow:hidden;margin:10px 0 7px}
+    .progress-fill{height:100%;border-radius:inherit;background:var(--accent);transition:width .2s ease}
     .challenge-meta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:12px}
     .task-checklist{display:grid;gap:7px;max-height:180px;overflow:auto;padding:4px 0}
-    .task-check{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:13px}
+    .task-check{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:13px}
     .task-check input{width:auto}
     .archived-task{opacity:.68}
     .pool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .pool{
-      padding:14px;border-radius:18px;border:1px solid var(--line);
-      background:linear-gradient(145deg,#fff,#faf7ff)
+      padding:14px;border-radius:10px;border:1px solid var(--line);
+      background:var(--panel)
     }
-    .pool .cost{font-size:25px;font-weight:900;color:#6047dc}
+    .pool .cost{font-size:25px;font-weight:900;color:var(--accent)}
     .pool small{color:var(--muted)}
-    .pool ul{padding-left:18px;margin:10px 0;color:#544c61;font-size:12px;min-height:36px}
+    .pool ul{padding-left:18px;margin:10px 0;color:#53656b;font-size:12px;min-height:36px}
     .pool li{margin:4px 0}
-    .boss{background:linear-gradient(135deg,#281e3d,#4d386d);color:white;border:none}
-    .boss .tag{background:rgba(255,255,255,.13);color:#eee7ff}
-    .boss .pts{color:#ffd978}
-    .boss .note{color:#d9d0e9}
+    .ticket-rack{display:grid;gap:10px;width:100%;grid-column:1/-1}
+    .pool-grid:has(.ticket-rack){grid-template-columns:1fr}
+    .ticket-card{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:106px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:5px 12px 12px 5px;background:var(--panel);box-shadow:var(--shadow)}
+    .ticket-card::before{content:"";position:absolute;inset:0 auto 0 0;width:9px;background:var(--ticket-color,var(--accent))}
+    .ticket-tab{grid-column:1;grid-row:1 / span 2;align-self:stretch;display:grid;place-items:center;padding:10px 8px 10px 14px;background:var(--ticket-color,var(--accent));color:white;font-size:13px;font-weight:900;writing-mode:vertical-rl;letter-spacing:2px}
+    .ticket-copy{grid-column:2;grid-row:1;min-width:0;padding:12px 0}
+    .ticket-copy small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
+    .ticket-copy strong{display:block;color:var(--text);font-size:18px;line-height:1.25}
+    .ticket-copy span{display:block;color:var(--muted);font-size:12px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ticket-count{grid-column:3;grid-row:1 / span 2;min-width:56px;text-align:center;color:var(--ticket-color,var(--accent));font-size:26px;font-weight:900;line-height:1}
+    .ticket-count b{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-top:4px}
+    .ticket-action{grid-column:2;grid-row:2;justify-self:start;margin:0 12px 12px 0;white-space:nowrap}
+    .ticket-online{--ticket-color:#416b80}.ticket-physical{--ticket-color:#c87560}.ticket-manager{--ticket-color:#6d718d}
+    @media(max-width:520px){
+      .ticket-card{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-items:start;gap:12px;min-height:148px;padding:14px 12px 12px 68px;border-radius:12px}
+      .ticket-card::before{display:none}
+      .ticket-tab{position:absolute;inset:0 auto 0 0;width:56px;padding:12px 8px;background:var(--ticket-color,var(--accent));border-radius:11px 0 0 11px;grid-column:auto;grid-row:auto}
+      .ticket-count{position:absolute;right:12px;top:14px;font-size:20px;grid-column:auto;grid-row:auto}
+      .ticket-action{grid-column:1/-1;width:100%;grid-row:2;margin:0;justify-self:stretch}
+      .ticket-copy{grid-column:1;grid-row:1;padding:0 54px 0 0}
+    }
+    .special-card{background:var(--panel);border-color:#c5d4d8}
+    .special-card .coin-count{font-size:30px;font-weight:900;color:var(--accent)}
+    .special-card .odds{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+    .special-card .odds div{padding:9px;border-radius:8px;background:#edf2f2;text-align:center;font-size:12px}
+    .special-card .odds b{display:block;font-size:17px;color:var(--accent)}
+    .card-catalog{display:grid;gap:7px;margin-top:12px}
+    .card-entry{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+    .card-entry .card-name{font-weight:800;font-size:13px}
+    .card-entry .card-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
+    .rarity-1{color:#65594d}.rarity-2{color:#35677d}.rarity-3{color:#a06a1b}
+    .boss{background:#e7eff0;color:var(--text);border:1px solid #c3d4d8}
+    .boss .tag{background:#f8fbfb;color:#4f6972;border-color:#bfd1d5}
+    .boss .pts{color:#a66b2d}
+    .boss .note{color:#637278}
     .wish-row{display:grid;grid-template-columns:1fr 120px;gap:8px}
     .history{max-height:330px;overflow:auto;display:grid;gap:7px}
-    .history-row{padding:10px 11px;border-radius:13px;background:#faf8fd;font-size:12px}
+    .history-row{padding:10px 11px;border-radius:8px;background:#eee7dc;font-size:12px}
     .history-row strong{display:block;margin-bottom:3px}
     .history-row span{color:var(--muted)}
-    .empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed #ddd4eb;border-radius:15px;font-size:13px}
+    .empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed #c7d3d5;border-radius:8px;font-size:13px}
     .bottom{
       position:fixed;z-index:30;left:0;right:0;bottom:0;
-      background:rgba(255,255,255,.92);backdrop-filter:blur(16px);
-      border-top:1px solid #e9e2f1;
+      background:rgba(255,253,248,.96);
+      border-top:1px solid var(--line);
       padding:7px 10px calc(7px + var(--safe-bottom));
     }
     .bottom-inner{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
     .nav{
-      border:0;background:transparent;color:#81788e;padding:7px 2px;border-radius:13px;font-size:11px;font-weight:700
+      min-height:44px;border:0;background:transparent;color:var(--muted);padding:7px 2px;border-radius:8px;font-size:11px;font-weight:700
     }
     .nav i{display:block;font-style:normal;font-size:21px;margin-bottom:2px}
-    .nav.active{background:#f0ebff;color:#6047dc}
+    .nav.active{background:#e3edef;color:var(--accent)}
     .sheet{
       position:fixed;z-index:50;inset:0;background:rgba(28,20,42,.42);
       display:none;align-items:flex-end;justify-content:center
     }
     .sheet.show{display:flex}
     .sheet-panel{
-      width:min(760px,100%);max-height:88vh;overflow:auto;background:white;
-      border-radius:24px 24px 0 0;padding:18px 16px calc(18px + var(--safe-bottom));
+      width:min(760px,100%);max-height:88vh;overflow:auto;background:var(--panel);
+      border-radius:16px 16px 0 0;padding:18px 16px calc(18px + var(--safe-bottom));
     }
     .sheet-panel h2{margin:0 0 14px}
+    .manager-summary{background:#eaf1f2;border:1px solid #cbdadd;border-radius:10px;padding:13px}
+    .manager-summary strong{color:var(--accent)}
+    .manager-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+    .manager-section h3{font-size:13px;margin:0 0 8px}
     .scratch{
       margin-top:12px;min-height:145px;border-radius:20px;display:grid;place-items:center;text-align:center;padding:18px;
       background:repeating-linear-gradient(135deg,#c4c5ce 0 16px,#b4b6c2 16px 32px);
       color:#4e4f5c;font-size:22px;font-weight:900;letter-spacing:2px;position:relative;overflow:hidden
     }
-    .scratch.revealed{background:linear-gradient(135deg,#6f55ff,#ff75aa);color:white;letter-spacing:0}
+    .scratch.prize-only{display:block;min-height:250px;padding:0;background:transparent;color:#27343a;border:0;border-radius:0;box-shadow:none;letter-spacing:0}
+    .prize-only-panel{position:relative;width:100%;min-height:250px;padding:32px;background:#d8d4cc url("./prize-brush-bg.png") center/cover no-repeat;border:0;color:#27343a;overflow:hidden}
+    .prize-only-content{position:absolute;z-index:1;left:50%;top:50%;width:calc(100% - 170px);max-width:620px;transform:translate(-50%,-50%);text-align:center}
+    .prize-only-content strong{display:block;font-family:"Kaiti SC","STKaiti","Songti SC","STSong",serif;font-size:clamp(29px,5vw,42px);font-weight:700;line-height:1.2;letter-spacing:.06em;color:#24343b;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+    .prize-only-content span{display:block;margin-top:13px;color:#53656b;font-family:"Kaiti SC","STKaiti","Songti SC","STSong",serif;font-size:17px;font-weight:700;letter-spacing:.04em}
+    .prize-only-gift{position:absolute;right:24px;bottom:16px;width:70px;height:70px;object-fit:contain;z-index:2}
     .scratch .small{font-size:12px;font-weight:600;opacity:.85;margin-top:5px}
     .install-tip{font-size:12px;background:#fff8e7;color:#8b6400;padding:10px 12px;border-radius:13px;margin-top:10px;display:none}
     @media(max-width:520px){
       .app{padding:calc(12px + var(--safe-top)) 12px 12px}.grid2,.pool-grid{grid-template-columns:1fr}.wish-row{grid-template-columns:1fr}
-      .hero{border-radius:22px}.score{font-size:38px}
+      .hero{border-radius:12px}.score{font-size:38px}
     }
   </style>
 </head>
@@ -178,29 +219,63 @@
   </main>
 
   <main id="drawView" class="view">
-    <section class="card">
-      <h2>🎁 奖励池</h2>
-      <p class="sub">你定的规则：5 分≈20 元以内，10 分≈50 元，20 分≈100 元，50 分≈300 元。可以给每档添加具体心愿。</p>
-      <div id="poolGrid" class="pool-grid"></div>
-      <div id="scratch" class="scratch">选择一个奖池</div>
+    <div class="draw-tabs" role="tablist" aria-label="抽奖类型">
+      <button class="draw-tab active" role="tab" aria-selected="true" data-draw-tab="normalDrawPanel" onclick="switchDrawTab('normalDrawPanel')">🎟️ 一番赏抽奖</button>
+      <button class="draw-tab" role="tab" aria-selected="false" data-draw-tab="specialDrawPanel" onclick="switchDrawTab('specialDrawPanel')">🎫 特殊卡池</button>
+    </div>
+    <section id="normalDrawPanel" class="draw-panel active">
+      <section class="card">
+        <h2>🎁 普通一番赏</h2>
+        <p class="sub">固定 5 分抽一次。一盒 50 张，抽出即删除；本盒抽完后，下一次抽奖自动开新盒。</p>
+        <div id="poolGrid" class="ticket-rack"></div>
+        <div id="scratch" class="scratch">选择一个奖池</div>
+      </section>
+    </section>
+    <section id="specialDrawPanel" class="draw-panel">
+      <section class="card special-card">
+        <h2>🎫 特殊卡池</h2>
+        <p class="sub">用幸运币抽取特殊奖励。每天第一次打开自动获得 1 枚；连续 4 次抽到普通卡后，第 5 抽触发保底。</p>
+        <div class="score-row">
+          <div class="coin-count">🪙 <span id="luckyCoinCount">0</span> <small>幸运币</small></div>
+          <div class="mini-stat" id="specialCardStatus">下一抽：普通概率</div>
+        </div>
+        <div class="odds">
+          <div><b>75%</b>★ 普通</div>
+          <div><b>20%</b>★★ 稀有</div>
+          <div><b>5%</b>★★★ 传说</div>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" onclick="drawSpecialCardFromUi()">抽一张 · 1 幸运币</button>
+          <button class="btn" onclick="openCoinRules()">🪙 幸运币规则</button>
+        </div>
+        <div id="specialCardResult" class="note" style="margin-top:10px">抽到的卡会显示在这里。</div>
+        <div id="specialCardList" class="card-catalog"></div>
+        <details style="margin-top:12px">
+          <summary style="cursor:pointer;font-size:13px;font-weight:800">查看完整卡池</summary>
+          <div id="specialCardCatalog" class="card-catalog"></div>
+        </details>
+      </section>
     </section>
   </main>
 
   <main id="wishView" class="view">
     <section class="card">
       <h2>💗 心愿池</h2>
-      <p class="sub">看到想买的先放进来，再决定归到哪个积分档。</p>
+      <p class="sub">心愿加入新盒配置后会成为普通奖券；已经开盒后不能改当前盒。也可以把现有奖池一键同步到这里。</p>
       <div class="wish-row">
         <input id="wishName" placeholder="例如：斑马笔 / 玩偶 / 黑胶">
         <select id="wishPool">
-          <option value="5">5分 · 20元以内</option>
-          <option value="10">10分 · 50元以内</option>
-          <option value="20">20分 · 100元以内</option>
-          <option value="50">50分 · 300元以内</option>
-          <option value="boss">Boss大奖</option>
+          <option value="small">小赏 · 20元以内</option>
+          <option value="medium">中赏 · 30～50元</option>
+          <option value="large">大赏 · 约100元</option>
+          <option value="grand">大奖 · 约300元</option>
+          <option value="boss">Boss大奖（不进普通池）</option>
         </select>
       </div>
-      <button class="btn pink" onclick="addWish()" style="margin-top:8px">加入心愿</button>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn pink" onclick="addWish()">加入心愿</button>
+        <button class="btn" onclick="syncWishesFromNormalPool()">从奖池同步</button>
+      </div>
       <div id="wishList" class="list" style="margin-top:12px"></div>
     </section>
   </main>
@@ -243,6 +318,59 @@
     <button class="nav" data-view="moreView" onclick="switchView(this)"><i>⚙️</i>更多</button>
   </div>
 </nav>
+
+<div id="coinRuleSheet" class="sheet" onclick="sheetBackdrop(event,'coinRuleSheet')">
+  <div class="sheet-panel">
+    <h2>🪙 幸运币怎么获得</h2>
+    <div class="item"><strong>1. 每日首次打开 · +1</strong><div class="note">每天第一次打开许愿池自动领取 1 枚，当天不会重复发放；没打开的日子不会补发。</div></div>
+    <div class="item" style="margin-top:8px"><strong>2. 当天完成 3 个任务 · +1</strong><div class="note">循环任务和一次性任务都计入当天完成次数。</div></div>
+    <div class="item" style="margin-top:8px"><strong>3. 连续 7 天完成任务 · +1</strong><div class="note">连续完成 7 天时获得 1 枚，之后每完成一个新的 7 天里程碑再获得 1 枚。</div></div>
+    <div class="item" style="margin-top:8px"><strong>4. 完成并兑换限时挑战 · +1</strong><div class="note">每个限时挑战只奖励 1 枚，完成后点击兑换奖励才会发放。</div></div>
+    <p class="sub" style="margin-top:12px">幸运币和抽卡记录保存在当前设备的浏览器里。清除浏览器数据或更换设备后不会自动同步。</p>
+    <button class="btn" onclick="closeSheet('coinRuleSheet')">知道了</button>
+  </div>
+</div>
+
+<div id="prizeManagerSheet" class="sheet" onclick="sheetBackdrop(event,'prizeManagerSheet')">
+  <div class="sheet-panel">
+    <h2>🎟️ 奖券管理</h2>
+    <p class="sub">奖券的查看、导入、添加和清空都集中在这里。</p>
+    <div id="prizeManagerStatus" class="manager-summary"></div>
+    <div class="manager-section">
+      <h3>奖券内容</h3>
+      <div class="toolbar">
+        <button class="btn" onclick="openNormalPoolSheet()">查看本盒奖券</button>
+        <button class="btn" onclick="openBulkPoolSheet()">📥 批量导入</button>
+        <button class="btn" onclick="addPoolItem()">＋ 添加奖券</button>
+        <button class="btn danger" onclick="clearCurrentPrizePool()">清空当前奖池</button>
+      </div>
+    </div>
+    <button class="btn" onclick="closeSheet('prizeManagerSheet')" style="margin-top:14px">关闭</button>
+  </div>
+</div>
+
+<div id="normalPoolSheet" class="sheet" onclick="sheetBackdrop(event,'normalPoolSheet')">
+  <div class="sheet-panel">
+    <h2>🎟️ 本盒奖券</h2>
+    <p id="normalPoolSheetStatus" class="sub"></p>
+    <ul id="normalPoolSheetList" style="padding-left:20px;margin:0;color:#53656b;font-size:13px"></ul>
+    <button class="btn" onclick="closeSheet('normalPoolSheet')" style="margin-top:12px">关闭</button>
+  </div>
+</div>
+
+<div id="bulkPoolSheet" class="sheet" onclick="sheetBackdrop(event,'bulkPoolSheet')">
+  <div class="sheet-panel">
+    <h2>📥 批量导入奖券</h2>
+    <p class="sub">推荐按档位分组，每个奖品单独一行；也兼容“奖品名称 | 档位”的旧格式。</p>
+    <div class="field"><textarea id="bulkPoolText" style="min-height:180px" oninput="validateBulkPoolText()" placeholder="小：&#10;奶茶一杯&#10;咖啡一杯&#10;&#10;中：&#10;喜欢的甜品盒&#10;&#10;大：&#10;100元购物额度&#10;&#10;超大：&#10;自选大奖"></textarea></div>
+    <div id="bulkPoolStatus" class="note" style="white-space:pre-line"></div>
+    <label class="task-check"><input id="bulkSyncWishes" type="checkbox" checked> 同步导入到心愿盒</label>
+    <div class="toolbar" style="margin-top:10px">
+      <button id="bulkImportButton" class="btn primary" onclick="importBulkPoolItems()" disabled>导入奖券</button>
+      <button class="btn" onclick="closeSheet('bulkPoolSheet')">取消</button>
+    </div>
+  </div>
+</div>
 
 <div id="taskSheet" class="sheet" onclick="sheetBackdrop(event,'taskSheet')">
   <div class="sheet-panel">
@@ -305,14 +433,15 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js"></script>
+<script src="./level-up-life-logic.js?v=11"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:6, score:0, earned:0, spent:0,
+  version:9, score:0, earned:0, spent:0,
+  luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
     {id:uid(),name:'完成30分钟运动',category:'减肥 / 运动',points:1,note:''},
     {id:uid(),name:'完成一次力量训练',category:'减肥 / 运动',points:1,note:''},
@@ -324,12 +453,8 @@ const defaults={
     {id:uid(),name:'英语口语练习30分钟',category:'语言学习',points:1,note:''},
     {id:uid(),name:'整理10个可复用表达',category:'语言学习',points:1,note:''}
   ],
-  pools:[
-    {cost:5,budget:'20元以内',items:[]},
-    {cost:10,budget:'50元以内',items:[]},
-    {cost:20,budget:'100元以内',items:[]},
-    {cost:50,budget:'300元以内',items:[]}
-  ],
+  pools:[{cost:5,budget:'普通一番赏',items:[]}], normalBoxTemplate:[], normalBoxNumber:1, normalBoxCurrentSize:50,
+  physicalBoxTemplate:[], physicalBoxItems:[], physicalBoxNumber:1, physicalBoxCurrentSize:50, lastPhysicalDraw:null,
   wishes:[],
   bosses:[
     {id:uid(),name:'求职冲刺 Boss',condition:'完成 3 次模拟面试',reward:'自定义一个大奖',status:'active'}
@@ -337,6 +462,13 @@ const defaults={
   challenges:[],
   history:[]
 };
+
+const DEMO_REWARDS=[
+  ...['奶茶一杯','咖啡一杯','喜欢的零食','冰淇淋','水果杯','香薰小样','贴纸包','盲盒小物','发夹','袜子','洗护旅行装','气泡水','酸奶','可丽露','蛋挞','小蛋糕','手机挂件','钥匙扣','便签本','中性笔','小零食礼包','面膜一片','护手霜','洗澡球','热敷眼罩','杂志一本','小花束','扭蛋一次','周边小物','早餐加料','晚餐加菜','电影爆米花','冰饮一杯','30分钟自由休息','便携充电线'].map(name=>({name,tier:'small'})),
+  ...['喜欢的甜品盒','一杯手冲咖啡','一顿想吃的午餐','书一本','小型绿植','香氛蜡烛','美甲或美容小项目','新耳机配件','两张电影票','小饰品'].map(name=>({name,tier:'medium'})),
+  ...['100元购物额度','喜欢的餐厅一顿','一件实用小装备','100元书店额度'].map(name=>({name,tier:'large'})),
+  {name:'300元大奖：自选一件想要的东西',tier:'grand'}
+];
 
 function clone(x){return JSON.parse(JSON.stringify(x))}
 function loadState(){
@@ -368,11 +500,33 @@ function loadState(){
 }
 function normalize(s){
   const out=LevelUpLifeLogic.normalizeState(s,defaults);
-  if(!Array.isArray(out.pools))out.pools=clone(defaults.pools);
+  out.pools=LevelUpLifeLogic.normalizePools(out.pools||defaults.pools);
+  if(out.normalBoxTemplate.length===48){
+    const legacyBoxActive=out.pools[0].items.length>0;
+    if(out.demoRewardsSeeded)out.normalBoxTemplate=out.normalBoxTemplate.concat(clone(DEMO_REWARDS.slice(48)));
+    if(legacyBoxActive)out.normalBoxCurrentSize=48;
+  }
   if(!Array.isArray(out.wishes))out.wishes=[];
+  out.wishes=out.wishes.map(w=>{
+    if(w.pool==='boss')return {...w,pool:'boss'};
+    const legacy=String(w.pool||'');
+    const tier=['small','medium','large','grand'].includes(w.tier)?w.tier:
+      (legacy==='5'?'small':legacy==='10'?'medium':legacy==='20'?'large':legacy==='50'?'grand':'small');
+    return {...w,pool:'normal',tier};
+  });
   if(!Array.isArray(out.bosses))out.bosses=[];
   if(!Array.isArray(out.challenges))out.challenges=[];
   if(!Array.isArray(out.history))out.history=[];
+  const hasSavedPhysicalTemplate=Array.isArray(s?.physicalBoxTemplate)&&s.physicalBoxTemplate.length>0;
+  const hasSavedPhysicalItems=Array.isArray(s?.physicalBoxItems)&&s.physicalBoxItems.length>0;
+  const hasPhysicalItemsArray=Array.isArray(s?.physicalBoxItems);
+  const physicalTemplateSource=hasSavedPhysicalTemplate?s.physicalBoxTemplate:out.normalBoxTemplate.length===50?out.normalBoxTemplate:[];
+  out.physicalBoxTemplate=LevelUpLifeLogic.normalizePools([{items:physicalTemplateSource}])[0].items;
+  const physicalItemsSource=hasSavedPhysicalTemplate?(hasPhysicalItemsArray?s.physicalBoxItems:out.physicalBoxTemplate):hasSavedPhysicalItems?s.physicalBoxItems:out.physicalBoxTemplate;
+  out.physicalBoxItems=LevelUpLifeLogic.normalizePools([{items:physicalItemsSource}])[0].items;
+  out.physicalBoxNumber=Math.max(1,Math.floor(Number(out.physicalBoxNumber)||1));
+  out.physicalBoxCurrentSize=Math.max(1,Math.floor(Number(out.physicalBoxCurrentSize)||50));
+  out.lastPhysicalDraw=out.lastPhysicalDraw&&typeof out.lastPhysicalDraw==='object'?{...out.lastPhysicalDraw}:null;
   return out;
 }
 let state=loadState();
@@ -383,6 +537,14 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function fmt(n){return Number(n).toFixed(1).replace(/\.0$/,'')}
 function now(){return new Date().toLocaleString()}
 function log(title,delta=''){state.history.unshift({id:uid(),time:now(),title,delta});state.history=state.history.slice(0,150)}
+function seedLocalDemoRewards(){
+  if(location.protocol!=='file:'||state.demoRewardsSeeded||state.pools[0]?.items.length)return false;
+  state.pools[0].items=clone(DEMO_REWARDS);state.normalBoxTemplate=clone(DEMO_REWARDS);state.normalBoxNumber=1;
+  state.physicalBoxItems=clone(DEMO_REWARDS);state.physicalBoxTemplate=clone(DEMO_REWARDS);state.physicalBoxNumber=1;state.physicalBoxCurrentSize=50;state.demoRewardsSeeded=true;
+  log('载入本地模拟奖券','50 张 · 35小赏 / 10中赏 / 4大赏 / 1大奖');
+  localStorage.setItem(STORAGE,JSON.stringify(state));
+  return true;
+}
 
 function switchView(btn){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -390,6 +552,103 @@ function switchView(btn){
   document.getElementById(btn.dataset.view).classList.add('active');btn.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function switchDrawTab(tabId){
+  document.querySelectorAll('.draw-tab').forEach(tab=>{
+    const active=tab.dataset.drawTab===tabId;
+    tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));
+  });
+  document.querySelectorAll('.draw-panel').forEach(panel=>panel.classList.toggle('active',panel.id===tabId));
+}
+function openCoinRules(){document.getElementById('coinRuleSheet').classList.add('show')}
+function openBulkPoolSheet(){
+  if(state.pools[0].items.length)return alert('本盒已经开始抽取，不能中途导入奖券。请等本盒抽完后再准备下一盒。');
+  if(state.normalBoxTemplate.length>=LevelUpLifeLogic.NORMAL_BOX_SIZE)return alert('当前新盒已经有 50 张奖券了。');
+  $('bulkPoolText').value='';$('bulkSyncWishes').checked=true;
+  document.getElementById('bulkPoolSheet').classList.add('show');
+  validateBulkPoolText();
+}
+function resetPhysicalBoxFromTemplate(){
+  state.physicalBoxTemplate=clone(state.normalBoxTemplate);state.physicalBoxItems=clone(state.normalBoxTemplate);
+  state.physicalBoxNumber=1;state.physicalBoxCurrentSize=LevelUpLifeLogic.NORMAL_BOX_SIZE;
+}
+function clearCurrentPrizePool(){
+  if(!confirm('只清空当前普通奖池，保留任务、积分、心愿、抽奖记录和特殊卡？'))return;
+  state.pools[0].items=[];state.normalBoxTemplate=[];state.normalBoxNumber=1;state.normalBoxCurrentSize=50;resetPhysicalBoxFromTemplate();state.demoRewardsSeeded=true;
+  log('清空当前普通奖池','可以批量导入新盒');save();
+}
+function parseBulkPoolText(raw){return LevelUpLifeLogic.parseBulkRewardText(raw)}
+function bulkCountsText(counts){return '小赏 '+counts.small+' / 35 · 中赏 '+counts.medium+' / 10 · 大赏 '+counts.large+' / 4 · 超大 '+counts.grand+' / 1'}
+function validateBulkPoolText(){
+  const parsed=parseBulkPoolText($('bulkPoolText').value),existing=state.normalBoxTemplate;
+  const composition=LevelUpLifeLogic.validateNormalBoxComposition(existing,parsed.items);
+  const available=LevelUpLifeLogic.NORMAL_BOX_SIZE-existing.length;
+  const messages=[];
+  if(parsed.errors.length)messages.push(parsed.errors.join('\n'));
+  if(parsed.items.length>available)messages.push('本次有 '+parsed.items.length+' 张，但新盒只剩 '+available+' 个位置。');
+  if(!composition.valid){
+    const missing=Object.entries(composition.remaining).filter(([,count])=>count>0).map(([tier,count])=>({small:'小赏',medium:'中赏',large:'大赏',grand:'超大'}[tier]+'还差 '+count+' 张'));
+    const excess=Object.entries(composition.remaining).filter(([,count])=>count<0).map(([tier,count])=>({small:'小赏',medium:'中赏',large:'大赏',grand:'超大'}[tier]+'超出 '+Math.abs(count)+' 张'));
+    if(missing.length)messages.push(missing.join(' · '));
+    if(excess.length)messages.push(excess.join(' · '));
+  }
+  const valid=!messages.length&&composition.valid;
+  $('bulkPoolStatus').textContent=(valid?'✓ 数量正确，可以导入':'当前识别 '+composition.total+' / 50 张\n'+bulkCountsText(composition.counts)+(messages.length?'\n'+messages.join('\n'):''));
+  $('bulkPoolStatus').style.color=valid?'#178655':'#b26a00';
+  $('bulkImportButton').disabled=!valid;
+  return {valid,parsed,message:messages.join('\n')||'数量还没有配齐。'};
+}
+function importBulkPoolItems(){
+  const validation=validateBulkPoolText();
+  if(!validation.valid)return alert(validation.message);
+  const parsed=validation.parsed,template=state.normalBoxTemplate,p=state.pools[0];
+  const available=LevelUpLifeLogic.NORMAL_BOX_SIZE-template.length;
+  if(parsed.items.length>available)return alert('本次要导入 '+parsed.items.length+' 张，但新盒还剩 '+available+' 个位置。');
+  template.push(...parsed.items);
+  if(template.length===LevelUpLifeLogic.NORMAL_BOX_SIZE){p.items=clone(template);state.normalBoxCurrentSize=50;resetPhysicalBoxFromTemplate();log('批量导入并装满新盒','50 张 · 可以开始抽取');}
+  else log('批量导入奖券',parsed.items.length+' 张 · 新盒已配置 '+template.length+' / 50');
+  if($('bulkSyncWishes').checked)syncWishesFromNormalPool(false);
+  closeSheet('bulkPoolSheet');save();
+}
+function syncWishesFromNormalPool(saveAfter=true){
+  const existing=new Set(state.wishes.filter(w=>w.pool==='normal').map(w=>w.name+'|'+w.tier));
+  let added=0;
+  state.normalBoxTemplate.forEach(item=>{
+    const key=item.name+'|'+item.tier;
+    if(existing.has(key))return;
+    state.wishes.unshift({id:uid(),name:item.name,pool:'normal',tier:item.tier});existing.add(key);added++;
+  });
+  if(!added){if(saveAfter)alert('心愿盒已经包含奖池里的奖品了。');return}
+  log('从奖池同步到心愿盒',added+' 个心愿');
+  if(saveAfter)save();
+}
+function renderNormalPoolSheet(){
+  const pool=state.pools[0],boxSize=LevelUpLifeLogic.NORMAL_BOX_SIZE;
+  const items=pool.items.length?pool.items:state.normalBoxTemplate;
+  const activeBoxSize=pool.items.length?state.normalBoxCurrentSize:boxSize;
+  const status=pool.items.length
+    ? '第 '+state.normalBoxNumber+' 盒 · 当前剩余 '+pool.items.length+' / '+activeBoxSize+' 张'
+    : state.normalBoxTemplate.length===boxSize
+      ? '本盒已抽完 · 以下是下一盒的奖券配置'
+      : '新盒准备中 · 已配置 '+state.normalBoxTemplate.length+' / '+boxSize+' 张';
+  $('normalPoolSheetStatus').textContent=status;
+  $('normalPoolSheetList').innerHTML=items.length
+    ? items.map((item,i)=>'<li style="margin:6px 0">'+esc(item.name)+' <span class="tag">'+normalTierLabel(item.tier)+'</span>'+(pool.items.length?'':'')+'</li>').join('')
+    : '<li class="note">还没有配置奖券。</li>';
+}
+function openNormalPoolSheet(){renderNormalPoolSheet();document.getElementById('normalPoolSheet').classList.add('show')}
+function renderPrizeManager(){
+  const pool=state.pools[0],boxSize=LevelUpLifeLogic.NORMAL_BOX_SIZE;
+  const remaining=pool.items.length,configured=state.normalBoxTemplate.length;
+  const status=remaining
+    ? '第 '+state.normalBoxNumber+' 盒 · 当前剩余 '+remaining+' / '+state.normalBoxCurrentSize+' 张'
+    : configured===boxSize
+      ? '本盒已抽完 · 下一次抽奖自动开新盒'
+      : '新盒准备中 · 已配置 '+configured+' / '+boxSize+' 张';
+  const items=remaining?pool.items:state.normalBoxTemplate;
+  const counts=Object.fromEntries(['small','medium','large','grand'].map(tier=>[tier,items.filter(item=>item.tier===tier).length]));
+  $('prizeManagerStatus').innerHTML='<strong>'+status+'</strong><div class="note">★ 小赏 '+counts.small+' · ★★ 中赏 '+counts.medium+' · ★★★ 大赏 '+counts.large+' · 👑 大奖 '+counts.grand+'</div>';
+}
+function openPrizeManager(){renderPrizeManager();document.getElementById('prizeManagerSheet').classList.add('show')}
 function openTaskSheet(id=null){
   editingTaskId=id;document.getElementById('taskSheetTitle').textContent=id?'编辑任务':'添加任务';
   if(id){
@@ -436,54 +695,174 @@ function deleteTask(id){
 }
 
 function addWish(){
-  const name=$('wishName').value.trim();if(!name)return;
-  state.wishes.unshift({id:uid(),name,pool:$('wishPool').value});
-  if($('wishPool').value!=='boss'){
-    const p=state.pools.find(x=>String(x.cost)===String($('wishPool').value));
-    if(p&&!p.items.includes(name))p.items.push(name);
+  const name=$('wishName').value.trim(),tier=$('wishPool').value;if(!name)return;
+  if(tier!=='boss'){
+    const p=state.pools[0],template=state.normalBoxTemplate;
+    if(p.items.length)return alert('本盒已经开始抽取，不能中途补充奖券。请等本盒抽完后准备下一盒。');
+    if(template.length>=LevelUpLifeLogic.NORMAL_BOX_SIZE)return alert('新盒已经有 50 张奖券了。');
+    if(!template.some(item=>item.name===name))template.push({name,tier});
+    if(template.length===LevelUpLifeLogic.NORMAL_BOX_SIZE){p.items=clone(template);state.normalBoxCurrentSize=50;resetPhysicalBoxFromTemplate();log('新一盒普通奖券已装满','50 张 · 可以开始抽取');}
   }
+  state.wishes.unshift({id:uid(),name,pool:tier==='boss'?'boss':'normal',tier:tier==='boss'?null:tier});
   $('wishName').value='';save();
 }
 function deleteWish(id){
   const w=state.wishes.find(x=>x.id===id);
   state.wishes=state.wishes.filter(x=>x.id!==id);
-  if(w&&w.pool!=='boss'){
-    const p=state.pools.find(x=>String(x.cost)===String(w.pool));
-    if(p)p.items=p.items.filter(x=>x!==w.name);
-  }
   save();
 }
 
-function addPoolItem(cost){
-  const p=state.pools.find(x=>x.cost===cost);
-  const name=prompt(cost+'分奖池（'+p.budget+'）新增奖励：');
-  if(name&&name.trim()){p.items.push(name.trim());save()}
-}
-function deletePoolItem(cost,index){
-  const p=state.pools.find(x=>x.cost===cost);p.items.splice(index,1);save();
-}
-function draw(cost){
-  const p=state.pools.find(x=>x.cost===cost);
-  if(state.score<cost)return alert('积分不足，还差 '+fmt(cost-state.score)+' 分。');
-  if(!p.items.length)return alert('这个奖池还是空的。先添加至少一个奖励。');
-  state.score-=cost;state.spent+=cost;
-  const prize=p.items[Math.floor(Math.random()*p.items.length)];
-  log('抽取 '+cost+' 分奖池：'+prize,'-'+cost+' 分');
-  const s=document.getElementById('scratch');
-  s.className='scratch';
-  s.innerHTML='点击刮开<div class="small">积分已经扣除，结果已锁定</div>';
-  s.onclick=()=>{
-    s.className='scratch revealed';
-    s.innerHTML='<div>🎉 '+esc(prize)+'<div class="small">'+cost+' 分 · '+esc(p.budget)+'</div></div>';
-    s.onclick=null;
-  };
+function addPoolItem(){
+  const p=state.pools[0],template=state.normalBoxTemplate;
+  if(p.items.length)return alert('本盒已经开始抽取，不能中途补充奖券。请等本盒抽完后准备下一盒。');
+  if(template.length>=LevelUpLifeLogic.NORMAL_BOX_SIZE)return alert('新盒已经有 50 张奖券了。');
+  const name=prompt('普通一番赏新增奖励名称：');if(!name||!name.trim())return;
+  const tier=prompt('输入奖励档位：small 小赏 / medium 中赏 / large 大赏 / grand 300元大奖','small');
+  if(!['small','medium','large','grand'].includes(tier))return alert('奖励档位无效。');
+  template.push({name:name.trim(),tier});
+  if(template.length===LevelUpLifeLogic.NORMAL_BOX_SIZE){p.items=clone(template);state.normalBoxCurrentSize=50;resetPhysicalBoxFromTemplate();log('新一盒普通奖券已装满','50 张 · 可以开始抽取');}
   save();
 }
+function deletePoolItem(index){
+  const p=state.pools[0],template=state.normalBoxTemplate;
+  if(p.items.length)return alert('本盒已经开始抽取，不能中途删改奖券。');
+  if(template.length>=LevelUpLifeLogic.NORMAL_BOX_SIZE)return alert('本盒刚抽完，下一盒仍按原来的 50 张开盒。');
+  template.splice(index,1);save();
+}
+function showNormalTicketResult(s,prize,tierLabel,tierClass){
+  s.className='scratch prize-only revealed '+tierClass;
+  s.innerHTML='<div class="prize-only-panel"><div class="prize-only-content"><strong>'+esc(prize)+'</strong><span>'+esc(tierLabel)+'</span></div><img class="prize-only-gift" src="./prize-gift.png" alt="" aria-hidden="true"></div>';
+  s.onclick=null;
+}
+function armNormalTicketReveal(s,prize,tierLabel,tierClass,free=false,sourceLabel='普通一番赏',drawAgainAction='draw(5)'){
+  s.className='scratch '+tierClass;
+  s.innerHTML='点击刮开<div class="small">'+tierLabel+' · '+(free?'免费结果已锁定':'5 积分已经扣除，结果已锁定')+'</div>';
+  s.onclick=()=>showNormalTicketResult(s,prize,tierLabel,tierClass);
+}
+function draw(cost,free=false){
+  const drawCost=5;
+  if(!free&&state.score<drawCost){alert('积分不足，还差 '+fmt(drawCost-state.score)+' 分。');return false}
+  const result=LevelUpLifeLogic.drawNormalReward(state);
+  if(!result.reward){
+    if(result.reason==='box-incomplete')return alert('当前新盒只有 '+state.normalBoxTemplate.length+' 张奖券，需要凑满 50 张后才能开盒。');
+    return alert('普通一番赏池还是空的。先添加 50 张奖券。');
+  }
+  state=result.state;
+  if(!free){state.score-=drawCost;state.spent+=drawCost}
+  const prize=result.reward.name;
+  state.lastDraw={cost:drawCost,prize,budget:'普通一番赏',tier:result.reward.tier,time:Date.now(),free};
+  log((free?'免费抽取 ':'抽取 ')+drawCost+' 分普通一番赏：'+prize,free?'🎁':'-'+drawCost+' 分');
+  if(result.remaining===0)log('本盒普通奖券已抽完','下一次抽奖自动开新盒');
+  const tierLabel=normalTierLabel(result.reward.tier),tierClass=normalTierClass(result.reward.tier);
+  const s=document.getElementById('scratch');
+  armNormalTicketReveal(s,prize,tierLabel,tierClass,free);
+  save();
+  return prize;
+}
+
+function cardById(id){return LevelUpLifeLogic.SPECIAL_CARD_CATALOG.find(card=>card.id===id)}
+function rarityLabel(rarity){return rarity===3?'★★★ 传说':rarity===2?'★★ 稀有':'★ 普通'}
+function normalTierLabel(tier){return ({small:'★ 小赏 · ≤20元',medium:'★★ 中赏 · 30～50元',large:'★★★ 大赏 · 约100元',grand:'👑 300 元大奖'})[tier]||'普通奖励'}
+function normalTierClass(tier){return 'tier-'+(['small','medium','large','grand'].includes(tier)?tier:'small')}
+function drawSpecialCardFromUi(){
+  const result=LevelUpLifeLogic.drawSpecialCard(state);
+  if(!result.card)return alert('还没有幸运币。每天首次打开、完成任务或挑战都可以获得。');
+  state=result.state;
+  state.lastSpecialCard={id:result.card.id,pity:result.pity,time:Date.now()};
+  log('抽到特殊卡：'+result.card.name,rarityLabel(result.card.rarity)+(result.pity?' · 保底':'') );
+  save();
+}
+function consumeSpecialCard(id){
+  const count=Number(state.specialCards[id])||0;if(count<1)return false;
+  state.specialCards[id]=count-1;if(state.specialCards[id]<=0)delete state.specialCards[id];return true;
+}
+function chooseNormalResults(count){
+  let previewState=state;const results=[];
+  for(let i=0;i<count;i++){
+    const result=LevelUpLifeLogic.drawNormalReward(previewState);
+    if(!result.reward)return null;
+    previewState=result.state;results.push(result.reward);
+  }
+  const pick=prompt('请选择一个普通一番赏结果：\n'+results.map((item,i)=>(i+1)+' · '+item.name+'（'+normalTierLabel(item.tier)+'）').join('\n'),'1');
+  if(!/^[1-9]\d*$/.test(pick)||Number(pick)>results.length)return null;
+  return {state:previewState,reward:results[Number(pick)-1]};
+}
+function useSpecialCard(id){
+  const card=cardById(id);if(!card||!(Number(state.specialCards[id])>0))return;
+  if(['free-draw','free-medium-draw','free-large-draw'].includes(id)){
+    if(!state.normalBoxTemplate?.length)return alert('普通一番赏池还是空的，先添加 50 张奖券。');
+    consumeSpecialCard(id);draw(5,true);return;
+  }
+  if(id==='upgrade-draw'){
+    const selected=chooseNormalResults(3);if(!selected)return;
+    consumeSpecialCard(id);state=selected.state;state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};
+    log('使用升赏卡：'+selected.reward.name,'⬆️ 三选一');save();return;
+  }
+  if(id==='task-boost'){
+    consumeSpecialCard(id);state.nextTaskMultiplier=1.5;log('使用升级券','下一次任务积分 +50%');save();return;
+  }
+  if(id==='time-pause'){
+    const active=state.challenges.filter(c=>c.status==='active');
+    if(!active.length)return alert('目前没有进行中的限时挑战。');
+    const choice=prompt('输入要延长的挑战编号：\n'+active.map((c,i)=>(i+1)+' · '+c.name).join('\n'),'1');
+    const challenge=active[Number(choice)-1];if(!challenge)return;
+    if(state.challengePauseUsed[challenge.id])return alert('这个挑战已经使用过时间暂停。');
+    const deadline=new Date(challenge.deadline+'T12:00:00');deadline.setDate(deadline.getDate()+1);
+    challenge.deadline=localDateKey(deadline);state.challengePauseUsed[challenge.id]=true;consumeSpecialCard(id);
+    log('使用时间暂停：'+challenge.name,'截止日期延长 1 天');save();return;
+  }
+  if(id==='direct-redeem'){
+    const choices=state.pools[0]?.items.filter(item=>item.tier==='small')||[];
+    if(!choices.length)return alert('小赏区还没有具体奖励。');
+    const choice=prompt('输入要兑换的小赏编号：\n'+choices.map((x,i)=>(i+1)+' · '+x.name).join('\n'),'1');
+    const selected=choices[Number(choice)-1];if(!selected)return;
+    if(!confirm('确认兑换：'+selected.name+'？'))return;
+    consumeSpecialCard(id);log('指定兑换：'+selected.name,'🌟 小赏');save();return;
+  }
+  if(id==='wish-come-true'){
+    const wish=prompt('输入一个 100 元以内、奖池外的心愿：');if(!wish||!wish.trim())return;
+    if(!confirm('确认实现这个心愿：'+wish.trim()+'？'))return;
+    consumeSpecialCard(id);log('愿望成真：'+wish.trim(),'✨ 100 元以内');save();return;
+  }
+  if(id==='hold-prize'){
+    if(!state.lastDraw)return alert('还没有最近一次抽奖结果。');
+    consumeSpecialCard(id);state.heldPrizes.unshift(state.lastDraw);log('保留最近一次抽奖结果','💾 '+state.lastDraw.prize);save();return;
+  }
+  if(id==='again'||id==='regret-pill'){
+    if(!state.lastDraw)return alert('还没有可以重抽的结果。');
+    const last=state.lastDraw;consumeSpecialCard(id);draw(last.cost,true);return;
+  }
+  if(id==='two-choice'){
+    const selected=chooseNormalResults(2);if(!selected)return;
+    consumeSpecialCard(id);state=selected.state;state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};log('使用二选一：'+selected.reward.name,'👀 普通一番赏');save();return;
+  }
+  if(id==='wish-sniper'){
+    const selected=chooseNormalResults(3);if(!selected)return;
+    consumeSpecialCard(id);state=selected.state;state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};log('使用心愿狙击：'+selected.reward.name,'🎯 普通一番赏');save();return;
+  }
+  if(['dessert-pass','coffee-pass','rest-pass','delay-pass','slack-pass'].includes(id)){
+    consumeSpecialCard(id);log('使用 '+card.name,card.description);save();return;
+  }
+  alert(card.description);
+}
 function physicalDraw(cost){
-  if(state.score<cost)return alert('积分不足，还差 '+fmt(cost-state.score)+' 分。');
-  if(!confirm('确认扣除 '+cost+' 分，然后去刮你的实体卡吗？'))return;
-  state.score-=cost;state.spent+=cost;
-  log('实体刮卡：'+cost+' 分奖池','-'+cost+' 分');
+  const drawCost=5;
+  if(state.score<drawCost)return alert('积分不足，还差 '+fmt(drawCost-state.score)+' 分。');
+  const virtualState={...state,pools:[{cost:5,budget:'实体刮卡盒',items:clone(state.physicalBoxItems)}],normalBoxTemplate:clone(state.physicalBoxTemplate),normalBoxNumber:state.physicalBoxNumber,normalBoxCurrentSize:state.physicalBoxCurrentSize};
+  const result=LevelUpLifeLogic.drawNormalReward(virtualState);
+  if(!result.reward){
+    if(result.reason==='box-incomplete')return alert('实体刮卡盒当前只有 '+state.physicalBoxTemplate.length+' 张奖券，需要凑满 50 张后才能开盒。');
+    return alert('实体刮卡盒还是空的，请先准备普通奖池。');
+  }
+  if(!confirm('确认扣除 5 分，并从实体刮卡盒抽取一张吗？'))return;
+  state.physicalBoxItems=clone(result.state.pools[0].items);state.physicalBoxTemplate=clone(result.state.normalBoxTemplate);
+  state.physicalBoxNumber=result.state.normalBoxNumber;state.physicalBoxCurrentSize=result.state.normalBoxCurrentSize;
+  state.score-=drawCost;state.spent+=drawCost;
+  const prize=result.reward.name,tierLabel=normalTierLabel(result.reward.tier),tierClass=normalTierClass(result.reward.tier);
+  state.lastPhysicalDraw={cost:drawCost,prize,budget:'实体刮卡盒',tier:result.reward.tier,time:Date.now()};
+  log('实体刮卡：'+prize,'-5 分 · 实体盒剩 '+state.physicalBoxItems.length+' 张');
+  if(result.remaining===0)log('实体刮卡盒已抽完','下一次实体刮卡自动开新盒');
+  const s=document.getElementById('scratch');armNormalTicketReveal(s,prize,tierLabel,tierClass,false,'实体刮卡盒','physicalDraw(5)');
   save();
 }
 
@@ -544,9 +923,19 @@ function claimChallenge(id){
   const progress=LevelUpLifeLogic.getChallengeProgress(c,state,Date.now());
   if(progress.status!=='claimable')return alert(progress.status==='expired'?'挑战已过期。':'还没有完成挑战。');
   if(!confirm('确认兑换奖励：'+c.reward+'？'))return;
-  c.status='claimed';log('限时挑战已兑换：'+c.name,'🎁 '+c.reward);save();
+  c.status='claimed';state.luckyCoins+=1;log('限时挑战已兑换：'+c.name,'🎁 '+c.reward+' · +1 幸运币');save();
 }
 function deleteChallenge(id){if(confirm('删除这个限时挑战？')){state.challenges=state.challenges.filter(x=>x.id!==id);save()}}
+
+function renderSpecialCards(){
+  $('luckyCoinCount').textContent=state.luckyCoins;
+  $('specialCardStatus').textContent=state.specialCardPity>=4?'下一抽：保底（★★ 95% / ★★★ 5%）':'普通概率 · 已连续 '+state.specialCardPity+' 次 ★';
+  const owned=LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>Number(state.specialCards[card.id])>0);
+  $('specialCardList').innerHTML=owned.length?owned.map(card=>`<div class="card-entry"><div><div class="card-name rarity-${card.rarity}">${card.icon} ${card.name} ×${state.specialCards[card.id]} <span class="tag">${rarityLabel(card.rarity)}</span></div><div class="card-desc">${esc(card.description)}</div></div><button class="btn" onclick="useSpecialCard('${card.id}')">使用</button></div>`).join(''):'<div class="empty">还没有特殊卡，先攒幸运币抽一张。</div>';
+  $('specialCardCatalog').innerHTML=[1,2,3].map(rarity=>`<div class="note"><strong class="rarity-${rarity}">${rarityLabel(rarity)}</strong> · ${rarity===1?'75%':rarity===2?'20%':'5%'}<div class="card-catalog">${LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>card.rarity===rarity).map(card=>`<div class="card-entry"><div><div class="card-name">${card.icon} ${card.name}</div><div class="card-desc">${esc(card.description)}</div></div><span class="tag">${rarity===1?'9.375%':rarity===2?'4%':'1%'}</span></div>`).join('')}</div></div>`).join('');
+  const last=state.lastSpecialCard&&cardById(state.lastSpecialCard.id);
+  $('specialCardResult').innerHTML=last?'上次抽到：<b class="rarity-'+last.rarity+'">'+last.icon+' '+esc(last.name)+'</b> · '+rarityLabel(last.rarity)+(state.lastSpecialCard.pity?' · 已触发保底':''):'抽到的卡会显示在这里。';
+}
 
 function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -568,6 +957,7 @@ function resetAll(){
 function render(){
   state=LevelUpLifeLogic.refreshChallengeStatuses(state,Date.now());
   $('score').textContent=fmt(state.score);$('earned').textContent=fmt(state.earned);$('spent').textContent=fmt(state.spent);
+  renderSpecialCards();
   const activeTasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
   $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>`
     <div class="item">
@@ -598,19 +988,46 @@ function render(){
     </div>`;
   }).join(''):'<div class="empty">还没有限时挑战，给自己设一个截止日期吧。</div>';
 
-  $('poolGrid').innerHTML=state.pools.map(p=>`
-    <div class="pool">
-      <div class="cost">${p.cost} 分</div><small>${esc(p.budget)}</small>
-      ${p.items.length?`<ul>${p.items.map((x,i)=>`<li>${esc(x)} <button class="btn danger" style="padding:2px 6px;font-size:10px" onclick="deletePoolItem(${p.cost},${i})">×</button></li>`).join('')}</ul>`:'<div class="note">还没有具体奖品</div>'}
-      <div class="item-actions">
-        <button class="btn" onclick="addPoolItem(${p.cost})">＋ 奖品</button>
-        <button class="btn primary" onclick="draw(${p.cost})">线上抽</button>
-        <button class="btn pink" onclick="physicalDraw(${p.cost})">实体刮卡</button>
-      </div>
-    </div>`).join('');
+  const normalPool=state.pools[0];
+  const boxSize=LevelUpLifeLogic.NORMAL_BOX_SIZE;
+  const boxRemaining=normalPool.items.length;
+  const activeBoxSize=boxRemaining?state.normalBoxCurrentSize:boxSize;
+  const summaryItems=boxRemaining?normalPool.items:state.normalBoxTemplate;
+  const tierCounts=Object.fromEntries(['small','medium','large','grand'].map(tier=>[tier,summaryItems.filter(item=>item.tier===tier).length]));
+  const boxStatus=boxRemaining
+    ? '第 '+state.normalBoxNumber+' 盒 · 剩余 '+boxRemaining+' / '+activeBoxSize+' 张'
+    : state.normalBoxTemplate.length===boxSize
+      ? '本盒已抽完 · 下一次抽奖自动开新盒'
+      : '新盒准备中 · 已配置 '+state.normalBoxTemplate.length+' / '+boxSize+' 张';
+  const physicalRemaining=state.physicalBoxItems.length;
+  const physicalTemplateSize=state.physicalBoxTemplate.length;
+  const physicalStatus=physicalTemplateSize===boxSize
+    ? '实体盒第 '+state.physicalBoxNumber+' 盒 · 剩余 '+physicalRemaining+' / '+boxSize+' 张'
+    : '实体盒准备中 · 已配置 '+physicalTemplateSize+' / '+boxSize+' 张';
+  $('poolGrid').innerHTML=`
+    <article class="ticket-card ticket-online">
+      <div class="ticket-tab">线上抽</div>
+      <div class="ticket-copy"><small>普通一番赏 · 固定卡池</small><strong>5 分抽一张</strong><span>${boxStatus}</span></div>
+      <div class="ticket-count">${boxRemaining}<b>张</b></div>
+      <button class="btn primary ticket-action" data-prize-action="draw-online" onclick="draw(5)">抽一张</button>
+    </article>
+    <article class="ticket-card ticket-physical">
+      <div class="ticket-tab">实体刮卡</div>
+      <div class="ticket-copy"><small>线下仪式感 · 独立虚拟盒</small><strong>刮开一张奖券</strong><span>${physicalStatus} · 每次消耗 5 分</span></div>
+      <div class="ticket-count">${physicalRemaining}<b>张</b></div>
+      <button class="btn pink ticket-action" data-prize-action="draw-physical" onclick="physicalDraw(5)">开始刮卡</button>
+    </article>
+    <article class="ticket-card ticket-manager">
+      <div class="ticket-tab">奖券管理</div>
+      <div class="ticket-copy"><small>配置当前与下一盒</small><strong>管理奖券</strong><span>查看、导入、添加或清空奖券</span></div>
+      <div class="ticket-count">${summaryItems.length}<b>张</b></div>
+      <button class="btn ticket-action" onclick="openPrizeManager()">打开管理</button>
+    </article>
+  `;
 
+  const normalPoolKeys=new Set(state.normalBoxTemplate.map(item=>item.name+'|'+item.tier));
   $('wishList').innerHTML=state.wishes.length?state.wishes.map(w=>`
-    <div class="item"><div class="item-top"><div><h3>${esc(w.name)}</h3><span class="tag">${w.pool==='boss'?'Boss大奖':w.pool+'分奖池'}</span></div><button class="btn danger" onclick="deleteWish('${w.id}')">删除</button></div></div>`).join(''):'<div class="empty">想买的先扔进来，别急着下单。</div>';
+    <div class="item"><div class="item-top"><div><h3>${esc(w.name)}</h3><div class="meta"><span class="tag">${w.pool==='boss'?'Boss大奖':normalTierLabel(w.tier)}</span>${w.pool==='normal'?`<span class="tag">${normalPoolKeys.has(w.name+'|'+w.tier)?'已在奖池':'待加入新盒'}</span>`:''}</div></div><button class="btn danger" onclick="deleteWish('${w.id}')">删除</button></div></div>`).join(''):'<div class="empty">想买的先扔进来，别急着下单。</div>';
 
   $('bossList').innerHTML=state.bosses.length?state.bosses.map(b=>`
     <div class="item boss">
@@ -625,12 +1042,18 @@ function render(){
     </div>`).join(''):'<div class="empty">还没有 Boss。</div>';
 
   $('history').innerHTML=state.history.length?state.history.map(h=>`<div class="history-row"><strong>${esc(h.title)} ${h.delta?('· '+esc(h.delta)):''}</strong><span>${esc(h.time)}</span></div>`).join(''):'<div class="empty">完成任务和兑换奖励后会记录在这里。</div>';
+  renderPrizeManager();
 }
 if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad|iPod/i.test(navigator.userAgent)){
   document.getElementById('installTip').style.display='block';
 }
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+seedLocalDemoRewards();
+const dailyLuckyCoin=LevelUpLifeLogic.claimDailyLuckyCoin(state,localDateKey());
+if(dailyLuckyCoin.awarded){
+  state=dailyLuckyCoin.state;log('每日首次打开奖励','+1 幸运币');localStorage.setItem(STORAGE,JSON.stringify(state));
 }
 render();
 </script>

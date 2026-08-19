@@ -16,6 +16,7 @@
       --bg:#f6f2ff;--panel:#fff;--text:#2a2337;--muted:#7e758f;
       --accent:#6f55ff;--accent2:#ff74a8;--line:#ece6f5;--good:#23a86b;
       --warn:#c87a00;--danger:#d94b59;--shadow:0 12px 34px rgba(70,45,110,.10);
+      --safe-top:env(safe-area-inset-top,0px);
       --safe-bottom:env(safe-area-inset-bottom,0px);
     }
     *{box-sizing:border-box}
@@ -33,7 +34,7 @@
     }
     button,input,select,textarea{font:inherit}
     button{touch-action:manipulation}
-    .app{max-width:760px;margin:0 auto;padding:16px}
+    .app{max-width:760px;margin:0 auto;padding:calc(16px + var(--safe-top)) 16px 16px}
     .hero{
       color:#fff;padding:20px;border-radius:26px;box-shadow:var(--shadow);
       background:linear-gradient(135deg,#6f55ff,#9d6fff 52%,#ff79ab);
@@ -79,6 +80,17 @@
     .note{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.45}
     .item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
     .item-actions .btn{padding:7px 9px;font-size:12px}
+    .challenge-card{background:linear-gradient(145deg,#fff,#faf7ff)}
+    .challenge-card.claimable{border-color:#bde8d0;background:#f5fff9}
+    .challenge-card.expired{opacity:.78;background:#faf8fd}
+    .challenge-card.claimed{opacity:.7}
+    .progress-track{height:8px;border-radius:999px;background:#eee9f8;overflow:hidden;margin:10px 0 7px}
+    .progress-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s ease}
+    .challenge-meta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:12px}
+    .task-checklist{display:grid;gap:7px;max-height:180px;overflow:auto;padding:4px 0}
+    .task-check{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:13px}
+    .task-check input{width:auto}
+    .archived-task{opacity:.68}
     .pool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .pool{
       padding:14px;border-radius:18px;border:1px solid var(--line);
@@ -129,7 +141,7 @@
     .scratch .small{font-size:12px;font-weight:600;opacity:.85;margin-top:5px}
     .install-tip{font-size:12px;background:#fff8e7;color:#8b6400;padding:10px 12px;border-radius:13px;margin-top:10px;display:none}
     @media(max-width:520px){
-      .app{padding:12px}.grid2,.pool-grid{grid-template-columns:1fr}.wish-row{grid-template-columns:1fr}
+      .app{padding:calc(12px + var(--safe-top)) 12px 12px}.grid2,.pool-grid{grid-template-columns:1fr}.wish-row{grid-template-columns:1fr}
       .hero{border-radius:22px}.score{font-size:38px}
     }
   </style>
@@ -152,6 +164,11 @@
       <p class="sub">以 0.5～2 分的小任务为主，完成就即时加分。任务作为模板保留，可以重复完成。</p>
       <div class="toolbar"><button class="btn primary" onclick="openTaskSheet()">＋ 添加任务</button></div>
       <div id="taskList" class="list" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card">
+      <h2>✅ 已归档的一次性任务</h2>
+      <div id="completedTaskList" class="list"></div>
     </section>
 
     <section class="card">
@@ -189,6 +206,13 @@
   </main>
 
   <main id="moreView" class="view">
+    <section class="card">
+      <h2>⏳ 限时挑战</h2>
+      <p class="sub">设一个截止日期，只选择一种目标：完成指定任务，或在期限内获得指定分数。</p>
+      <button class="btn primary" onclick="openChallengeSheet()">＋ 新增长期目标</button>
+      <div id="challengeList" class="list" style="margin-top:12px"></div>
+    </section>
+
     <section class="card">
       <h2>🔥 Boss 挑战</h2>
       <p class="sub">Boss 不走普通积分。完成后直接获得你写好的大奖兑换权。</p>
@@ -232,10 +256,38 @@
       </div>
       <div class="field"><label>积分</label><input id="taskPoints" type="number" min="0.5" step="0.5" value="1"></div>
     </div>
+    <div class="field"><label>任务类型</label>
+      <select id="taskRepeatable">
+        <option value="true">循环任务 · 完成后可以再次做</option>
+        <option value="false">一次性任务 · 完成后归档</option>
+      </select>
+    </div>
     <div class="field"><label>完成标准（可选）</label><textarea id="taskNote" placeholder="写清楚怎样算完成，避免临时放水。"></textarea></div>
     <div class="toolbar">
       <button class="btn primary" onclick="saveTask()">保存</button>
       <button class="btn" onclick="closeSheet('taskSheet')">取消</button>
+    </div>
+  </div>
+</div>
+
+<div id="challengeSheet" class="sheet" onclick="sheetBackdrop(event,'challengeSheet')">
+  <div class="sheet-panel">
+    <h2>新增限时挑战</h2>
+    <div class="field"><label>挑战名称</label><input id="challengeName" placeholder="例如：本周完成求职冲刺"></div>
+    <div class="grid2">
+      <div class="field"><label>截止日期</label><input id="challengeDeadline" type="date"></div>
+      <div class="field"><label>目标类型</label>
+        <select id="challengeGoalType" onchange="renderChallengeGoalFields()">
+          <option value="tasks">完成指定任务</option>
+          <option value="score">获得指定分数</option>
+        </select>
+      </div>
+    </div>
+    <div id="challengeGoalFields"></div>
+    <div class="field"><label>完成后可兑换</label><input id="challengeReward" placeholder="例如：买一件想要的东西 / 看一场电影"></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveChallenge()">保存</button>
+      <button class="btn" onclick="closeSheet('challengeSheet')">取消</button>
     </div>
   </div>
 </div>
@@ -253,6 +305,7 @@
   </div>
 </div>
 
+<script src="./level-up-life-logic.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
@@ -281,6 +334,7 @@ const defaults={
   bosses:[
     {id:uid(),name:'求职冲刺 Boss',condition:'完成 3 次模拟面试',reward:'自定义一个大奖',status:'active'}
   ],
+  challenges:[],
   history:[]
 };
 
@@ -307,18 +361,17 @@ function loadState(){
       if(Array.isArray(oldBoss)){
         migrated.bosses=oldBoss.map(b=>({id:uid(),name:typeof b==='string'?b:(b.name||'未命名 Boss'),condition:b.condition||'',reward:b.reward||'自定义大奖',status:b.status||'active'}));
       }
-      return migrated;
+      return normalize(migrated);
     }
   }catch(e){}
   return clone(defaults);
 }
 function normalize(s){
-  const out=Object.assign(clone(defaults),s);
-  out.score=Number(out.score||0);out.earned=Number(out.earned||0);out.spent=Number(out.spent||0);
-  if(!Array.isArray(out.tasks))out.tasks=[];
+  const out=LevelUpLifeLogic.normalizeState(s,defaults);
   if(!Array.isArray(out.pools))out.pools=clone(defaults.pools);
   if(!Array.isArray(out.wishes))out.wishes=[];
   if(!Array.isArray(out.bosses))out.bosses=[];
+  if(!Array.isArray(out.challenges))out.challenges=[];
   if(!Array.isArray(out.history))out.history=[];
   return out;
 }
@@ -342,8 +395,11 @@ function openTaskSheet(id=null){
   if(id){
     const t=state.tasks.find(x=>x.id===id);
     $('taskName').value=t.name;$('taskCategory').value=t.category;$('taskPoints').value=t.points;$('taskNote').value=t.note||'';
+    $('taskRepeatable').value=t.repeatable===false?'false':'true';
+    $('taskRepeatable').disabled=t.repeatable===false&&t.completed;
   }else{
     $('taskName').value='';$('taskCategory').value='减肥 / 运动';$('taskPoints').value=1;$('taskNote').value='';
+    $('taskRepeatable').value='true';$('taskRepeatable').disabled=false;
   }
   document.getElementById('taskSheet').classList.add('show');
 }
@@ -352,19 +408,29 @@ function sheetBackdrop(e,id){if(e.target.id===id)closeSheet(id)}
 function saveTask(){
   const name=$('taskName').value.trim(), points=Number($('taskPoints').value);
   if(!name||points<=0)return alert('请填写任务名称和有效积分。');
+  const repeatable=$('taskRepeatable').value==='true';
   if(editingTaskId){
-    Object.assign(state.tasks.find(x=>x.id===editingTaskId),{name,category:$('taskCategory').value,points,note:$('taskNote').value.trim()});
+    const task=state.tasks.find(x=>x.id===editingTaskId);
+    Object.assign(task,{name,category:$('taskCategory').value,points,note:$('taskNote').value.trim(),repeatable});
+    if(repeatable)task.completed=false;
   }else{
-    state.tasks.unshift({id:uid(),name,category:$('taskCategory').value,points,note:$('taskNote').value.trim()});
+    state.tasks.unshift({id:uid(),name,category:$('taskCategory').value,points,note:$('taskNote').value.trim(),repeatable,completed:false});
   }
   closeSheet('taskSheet');save();
 }
 function completeTask(id){
   const t=state.tasks.find(x=>x.id===id); if(!t)return;
-  state.score+=Number(t.points);state.earned+=Number(t.points);
-  log('完成任务：'+t.name,'+'+fmt(t.points)+' 分');save();
+  const result=LevelUpLifeLogic.completeTask(state,id,Date.now());
+  if(!result.awarded){
+    if(t.repeatable===false&&t.completed)alert('这个一次性任务已经完成并归档了。');
+    return;
+  }
+  state=result.state;
+  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分');save();
 }
 function deleteTask(id){
+  const used=state.challenges.some(c=>c.status==='active'&&c.goalType==='tasks'&&c.taskIds.includes(String(id)));
+  if(used)return alert('这个任务正在进行中的限时挑战里，请先删除挑战再删除任务。');
   if(!confirm('确定删除这个任务模板吗？'))return;
   state.tasks=state.tasks.filter(x=>x.id!==id);save();
 }
@@ -438,6 +504,50 @@ function claimBoss(id){
 }
 function deleteBoss(id){if(confirm('删除这个 Boss？')){state.bosses=state.bosses.filter(x=>x.id!==id);save()}}
 
+function localDateKey(date=new Date()){
+  return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+}
+function openChallengeSheet(){
+  $('challengeName').value='';$('challengeReward').value='';$('challengeGoalType').value='tasks';
+  const d=new Date();d.setDate(d.getDate()+7);$('challengeDeadline').value=localDateKey(d);
+  renderChallengeGoalFields();document.getElementById('challengeSheet').classList.add('show');
+}
+function renderChallengeGoalFields(){
+  const type=$('challengeGoalType').value;
+  if(type==='score'){
+    $('challengeGoalFields').innerHTML='<div class="field"><label>目标分数</label><input id="challengeTargetScore" type="number" min="0.5" step="0.5" placeholder="例如：10"></div>';
+    return;
+  }
+  const tasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
+  $('challengeGoalFields').innerHTML='<div class="field"><label>选择任务（至少一个）</label><div class="task-checklist">'+
+    (tasks.length?tasks.map(t=>'<label class="task-check"><input type="checkbox" name="challengeTask" value="'+esc(t.id)+'"> <span>'+esc(t.name)+' · '+fmt(t.points)+' 分</span></label>').join(''):'<div class="empty">没有可选任务，请先添加一个未完成的任务。</div>')+
+    '</div></div>';
+}
+function saveChallenge(){
+  const name=$('challengeName').value.trim(),deadline=$('challengeDeadline').value,reward=$('challengeReward').value.trim(),goalType=$('challengeGoalType').value;
+  if(!name||!deadline||!reward)return alert('请填写挑战名称、截止日期和奖励。');
+  const deadlineMs=new Date(deadline+'T23:59:59.999').getTime();
+  if(!Number.isFinite(deadlineMs)||deadlineMs<Date.now())return alert('截止日期必须是今天或之后。');
+  const challenge={id:uid(),name,deadline,goalType,taskIds:[],completedTaskIds:[],targetScore:0,startEarned:state.earned,reward,status:'active'};
+  if(goalType==='score'){
+    challenge.targetScore=Number($('challengeTargetScore').value);
+    if(challenge.targetScore<=0)return alert('请输入大于 0 的目标分数。');
+  }else{
+    challenge.taskIds=[...document.querySelectorAll('input[name="challengeTask"]:checked')].map(x=>x.value);
+    if(!challenge.taskIds.length)return alert('至少选择一个任务。');
+  }
+  state.challenges.unshift(challenge);closeSheet('challengeSheet');save();
+}
+function claimChallenge(id){
+  state=LevelUpLifeLogic.refreshChallengeStatuses(state,Date.now());
+  const c=state.challenges.find(x=>x.id===id);if(!c)return;
+  const progress=LevelUpLifeLogic.getChallengeProgress(c,state,Date.now());
+  if(progress.status!=='claimable')return alert(progress.status==='expired'?'挑战已过期。':'还没有完成挑战。');
+  if(!confirm('确认兑换奖励：'+c.reward+'？'))return;
+  c.status='claimed';log('限时挑战已兑换：'+c.name,'🎁 '+c.reward);save();
+}
+function deleteChallenge(id){if(confirm('删除这个限时挑战？')){state.challenges=state.challenges.filter(x=>x.id!==id);save()}}
+
 function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -456,13 +566,37 @@ function resetAll(){
 }
 
 function render(){
+  state=LevelUpLifeLogic.refreshChallengeStatuses(state,Date.now());
   $('score').textContent=fmt(state.score);$('earned').textContent=fmt(state.earned);$('spent').textContent=fmt(state.spent);
-  $('taskList').innerHTML=state.tasks.length?state.tasks.map(t=>`
+  const activeTasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
+  $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>`
     <div class="item">
-      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">+${fmt(t.points)}</div></div>
+      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${t.repeatable===false?'<span class="tag">一次性</span>':'<span class="tag">循环</span>'}${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">+${fmt(t.points)}</div></div>
       ${t.note?`<div class="note">${esc(t.note)}</div>`:''}
       <div class="item-actions"><button class="btn good" onclick="completeTask('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
-    </div>`).join(''):'<div class="empty">还没有任务，先加一个很小、能马上做的。</div>';
+    </div>`).join(''):'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
+
+  const archivedTasks=state.tasks.filter(t=>t.repeatable===false&&t.completed);
+  $('completedTaskList').innerHTML=archivedTasks.length?archivedTasks.map(t=>`
+    <div class="item archived-task">
+      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">一次性 · 已完成</span><span class="tag">${esc(t.category)}</span></div></div><div class="pts">+${fmt(t.points)}</div></div>
+      <div class="item-actions"><button class="btn" onclick="openTaskSheet('${t.id}')">查看 / 编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
+    </div>`).join(''):'<div class="empty">完成后的一次性任务会归档在这里。</div>';
+
+  $('challengeList').innerHTML=state.challenges.length?state.challenges.map(c=>{
+    const p=LevelUpLifeLogic.getChallengeProgress(c,state,Date.now());
+    const statusLabel={active:'进行中',claimable:'已达成 · 待兑换',claimed:'已兑换',expired:'已过期'}[p.status];
+    const progressText=c.goalType==='score'?fmt(p.current)+' / '+fmt(p.target)+' 分':p.current+' / '+p.target+' 个任务';
+    return `<div class="item challenge-card ${p.status}">
+      <div class="item-top"><div><h3>⏳ ${esc(c.name)}</h3><div class="meta"><span class="tag">${statusLabel}</span><span class="tag">截止 ${esc(c.deadline)}</span></div></div><div class="pts">${p.percent}%</div></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${p.percent}%"></div></div>
+      <div class="challenge-meta"><span>${progressText}</span><span>奖励：${esc(c.reward)}</span></div>
+      <div class="item-actions">
+        ${p.status==='claimable'?`<button class="btn pink" onclick="claimChallenge('${c.id}')">兑换奖励</button>`:''}
+        <button class="btn danger" onclick="deleteChallenge('${c.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty">还没有限时挑战，给自己设一个截止日期吧。</div>';
 
   $('poolGrid').innerHTML=state.pools.map(p=>`
     <div class="pool">

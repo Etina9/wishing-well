@@ -162,6 +162,20 @@
     .history-row{padding:10px 11px;border-radius:8px;background:#eee7dc;font-size:12px}
     .history-row strong{display:block;margin-bottom:3px}
     .history-row span{color:var(--muted)}
+    .usage-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+    .usage-stat{padding:10px 8px;border-radius:9px;background:#edf2f2;text-align:center;color:var(--muted);font-size:11px}
+    .usage-stat strong{display:block;color:var(--accent);font-size:20px;line-height:1.1;margin-bottom:3px}
+    .usage-tabs{display:flex;gap:6px;margin:10px 0}
+    .usage-tab{min-height:38px;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:#f5f7f6;color:var(--muted);font-weight:800;cursor:pointer}
+    .usage-tab.active{background:var(--accent);border-color:var(--accent);color:white}
+    .usage-panel{display:none}.usage-panel.active{display:block}
+    .usage-record{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fffdf8}
+    .usage-record.used{background:#f1f7f4;border-color:#c5ddd1}
+    .usage-record h3{font-size:14px;margin:0 0 5px}
+    .usage-record .note{margin-top:5px}
+    .usage-record-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+    .usage-record-actions .btn{min-height:36px;padding:6px 8px;font-size:11px;white-space:nowrap}
+    @media(max-width:420px){.usage-stats{grid-template-columns:1fr 1fr}.usage-stats .usage-stat:last-child{grid-column:1/-1}}
     .empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed #c7d3d5;border-radius:8px;font-size:13px}
     .celebration-toast{position:fixed;z-index:80;left:50%;top:calc(18px + var(--safe-top));transform:translate(-50%,-18px) scale(.96);width:min(92vw,360px);padding:12px 16px;border:1px solid #efb39c;border-radius:999px;background:#fff7ef;color:#a74830;box-shadow:0 8px 24px rgba(153,73,43,.18);font-size:13px;font-weight:900;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
     .celebration-toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
@@ -324,6 +338,18 @@
     </section>
 
     <section class="card">
+      <h2>🎁 奖励使用记录</h2>
+      <p class="sub">抽到的奖励会先放在“待使用”，用掉以后补上日期和备注。</p>
+      <div id="usageStats" class="usage-stats"></div>
+      <div class="usage-tabs" role="tablist" aria-label="奖励使用状态">
+        <button id="usageTabUnused" class="usage-tab active" onclick="switchUsageTab('unused')">待使用</button>
+        <button id="usageTabUsed" class="usage-tab" onclick="switchUsageTab('used')">已使用</button>
+      </div>
+      <div id="usageUnusedPanel" class="usage-panel active"><div id="unusedPrizeList" class="list"></div></div>
+      <div id="usageUsedPanel" class="usage-panel"><div id="usedPrizeList" class="list"></div></div>
+    </section>
+
+    <section class="card">
       <h2>⚙️ 数据与设置</h2>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">💾 导出存档</button>
@@ -474,14 +500,27 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=13"></script>
+<div id="usageRecordSheet" class="sheet" onclick="sheetBackdrop(event,'usageRecordSheet')">
+  <div class="sheet-panel">
+    <h2 id="usageRecordSheetTitle">记录奖励使用</h2>
+    <div id="usageRecordPrize" class="manager-summary"></div>
+    <div class="field"><label>使用日期</label><input id="usageRecordDate" type="date"></div>
+    <div class="field"><label>备注（可选）</label><textarea id="usageRecordNote" placeholder="例如：腾讯公益—姐妹互助女性计划 / 兑换麦记牛奶"></textarea></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveUsageRecord()">保存记录</button>
+      <button class="btn" onclick="closeSheet('usageRecordSheet')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script src="./level-up-life-logic.js?v=14"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:9, score:0, earned:0, spent:0,
+  version:10, score:0, earned:0, spent:0,
   taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
@@ -502,7 +541,7 @@ const defaults={
     {id:uid(),name:'求职冲刺 Boss',condition:'完成 3 次模拟面试',reward:'自定义一个大奖',status:'active'}
   ],
   challenges:[],
-  history:[]
+  history:[], prizeUsageRecords:[]
 };
 
 const DEMO_REWARDS=[
@@ -580,6 +619,16 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function fmt(n){return Number(n).toFixed(1).replace(/\.0$/,'')}
 function now(){return new Date().toLocaleString()}
 function log(title,delta=''){state.history.unshift({id:uid(),time:now(),title,delta});state.history=state.history.slice(0,150)}
+function addPrizeUsage(prize,source,sourceType,obtainedAt=Date.now()){
+  const result=LevelUpLifeLogic.addPrizeUsageRecord(state,{prize,source,sourceType,obtainedAt});
+  state=result.state;
+  return result.record;
+}
+function addUsedPrizeUsage(prize,source,sourceType,note='',obtainedAt=Date.now()){
+  const record=addPrizeUsage(prize,source,sourceType,obtainedAt);if(!record)return null;
+  const result=LevelUpLifeLogic.updatePrizeUsageRecord(state,record.id,{usedDate:localDateKey(),note},Date.now());
+  state=result.state;return result.record;
+}
 function seedLocalDemoRewards(){
   if(location.protocol!=='file:'||state.demoRewardsSeeded||state.pools[0]?.items.length)return false;
   state.pools[0].items=clone(DEMO_REWARDS);state.normalBoxTemplate=clone(DEMO_REWARDS);state.normalBoxNumber=1;
@@ -869,6 +918,7 @@ function draw(cost,free=false){
   if(!free){state.score-=drawCost;state.spent+=drawCost}
   const prize=result.reward.name;
   state.lastDraw={cost:drawCost,prize,budget:'普通一番赏',tier:result.reward.tier,time:Date.now(),free};
+  addPrizeUsage(prize,'普通一番赏',free?'free-normal-draw':'normal-draw',state.lastDraw.time);
   log((free?'免费抽取 ':'抽取 ')+drawCost+' 分普通一番赏：'+prize,free?'🎁':'-'+drawCost+' 分');
   if(result.remaining===0)log('本盒普通奖券已抽完','下一次抽奖自动开新盒');
   const tierLabel=normalTierLabel(result.reward.tier),tierClass=normalTierClass(result.reward.tier);
@@ -887,12 +937,23 @@ function drawSpecialCardFromUi(){
   if(!result.card)return alert('还没有幸运币。每天首次打开、完成任务或挑战都可以获得。');
   state=result.state;
   state.lastSpecialCard={id:result.card.id,pity:result.pity,time:Date.now()};
+  addPrizeUsage(result.card.name,'特殊卡池','special-card',state.lastSpecialCard.time);
   log('抽到特殊卡：'+result.card.name,rarityLabel(result.card.rarity)+(result.pity?' · 保底':'') );
   save();
 }
 function consumeSpecialCard(id){
   const count=Number(state.specialCards[id])||0;if(count<1)return false;
-  state.specialCards[id]=count-1;if(state.specialCards[id]<=0)delete state.specialCards[id];return true;
+  state.specialCards[id]=count-1;if(state.specialCards[id]<=0)delete state.specialCards[id];
+  const card=cardById(id);
+  if(card){
+    let record=state.prizeUsageRecords.find(item=>item.prize===card.name&&item.status==='unused');
+    if(!record)record=addPrizeUsage(card.name,'特殊卡池','special-card',state.lastSpecialCard?.time||Date.now());
+    if(record){
+      const updated=LevelUpLifeLogic.updatePrizeUsageRecord(state,record.id,{usedDate:localDateKey(),note:'使用特殊卡：'+card.name});
+      state=updated.state;
+    }
+  }
+  return true;
 }
 function chooseNormalResults(count){
   let previewState=state;const results=[];
@@ -913,7 +974,7 @@ function useSpecialCard(id){
   }
   if(id==='upgrade-draw'){
     const selected=chooseNormalResults(3);if(!selected)return;
-    consumeSpecialCard(id);state=selected.state;state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};
+    state=selected.state;consumeSpecialCard(id);state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};addPrizeUsage(selected.reward.name,'特殊卡：升赏卡','special-card-draw',state.lastDraw.time);
     log('使用升赏卡：'+selected.reward.name,'⬆️ 三选一');save();return;
   }
   if(id==='task-boost'){
@@ -935,12 +996,12 @@ function useSpecialCard(id){
     const choice=prompt('输入要兑换的小赏编号：\n'+choices.map((x,i)=>(i+1)+' · '+x.name).join('\n'),'1');
     const selected=choices[Number(choice)-1];if(!selected)return;
     if(!confirm('确认兑换：'+selected.name+'？'))return;
-    consumeSpecialCard(id);log('指定兑换：'+selected.name,'🌟 小赏');save();return;
+    consumeSpecialCard(id);addUsedPrizeUsage(selected.name,'特殊卡：指定兑换','special-card-redeem','通过指定兑换直接获得');log('指定兑换：'+selected.name,'🌟 小赏');save();return;
   }
   if(id==='wish-come-true'){
     const wish=prompt('输入一个 100 元以内、奖池外的心愿：');if(!wish||!wish.trim())return;
     if(!confirm('确认实现这个心愿：'+wish.trim()+'？'))return;
-    consumeSpecialCard(id);log('愿望成真：'+wish.trim(),'✨ 100 元以内');save();return;
+    consumeSpecialCard(id);addUsedPrizeUsage(wish.trim(),'特殊卡：愿望成真','special-card-redeem','通过愿望成真直接兑换');log('愿望成真：'+wish.trim(),'✨ 100 元以内');save();return;
   }
   if(id==='hold-prize'){
     if(!state.lastDraw)return alert('还没有最近一次抽奖结果。');
@@ -952,11 +1013,11 @@ function useSpecialCard(id){
   }
   if(id==='two-choice'){
     const selected=chooseNormalResults(2);if(!selected)return;
-    consumeSpecialCard(id);state=selected.state;state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};log('使用二选一：'+selected.reward.name,'👀 普通一番赏');save();return;
+    state=selected.state;consumeSpecialCard(id);state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};addPrizeUsage(selected.reward.name,'特殊卡：二选一','special-card-draw',state.lastDraw.time);log('使用二选一：'+selected.reward.name,'👀 普通一番赏');save();return;
   }
   if(id==='wish-sniper'){
     const selected=chooseNormalResults(3);if(!selected)return;
-    consumeSpecialCard(id);state=selected.state;state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};log('使用心愿狙击：'+selected.reward.name,'🎯 普通一番赏');save();return;
+    state=selected.state;consumeSpecialCard(id);state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};addPrizeUsage(selected.reward.name,'特殊卡：心愿狙击','special-card-draw',state.lastDraw.time);log('使用心愿狙击：'+selected.reward.name,'🎯 普通一番赏');save();return;
   }
   if(['dessert-pass','coffee-pass','rest-pass','delay-pass','slack-pass'].includes(id)){
     consumeSpecialCard(id);log('使用 '+card.name,card.description);save();return;
@@ -978,6 +1039,7 @@ function physicalDraw(cost){
   state.score-=drawCost;state.spent+=drawCost;
   const prize=result.reward.name,tierLabel=normalTierLabel(result.reward.tier),tierClass=normalTierClass(result.reward.tier);
   state.lastPhysicalDraw={cost:drawCost,prize,budget:'实体刮卡盒',tier:result.reward.tier,time:Date.now()};
+  addPrizeUsage(prize,'实体刮卡盒','physical-draw',state.lastPhysicalDraw.time);
   log('实体刮卡：'+prize,'-5 分 · 实体盒剩 '+state.physicalBoxItems.length+' 张');
   if(result.remaining===0)log('实体刮卡盒已抽完','下一次实体刮卡自动开新盒');
   const s=document.getElementById('scratch');armNormalTicketReveal(s,prize,tierLabel,tierClass,false,'实体刮卡盒','physicalDraw(5)');
@@ -997,7 +1059,7 @@ function completeBoss(id){
 function claimBoss(id){
   const b=state.bosses.find(x=>x.id===id);if(!b)return;
   if(!confirm('确认兑换大奖：'+b.reward+'？'))return;
-  b.status='claimed';log('Boss 大奖已兑换：'+b.reward,'🎁');save();
+  b.status='claimed';addUsedPrizeUsage(b.reward,'Boss 挑战','boss-redeem','完成 Boss 后兑换');log('Boss 大奖已兑换：'+b.reward,'🎁');save();
 }
 function deleteBoss(id){if(confirm('删除这个 Boss？')){state.bosses=state.bosses.filter(x=>x.id!==id);save()}}
 
@@ -1041,7 +1103,7 @@ function claimChallenge(id){
   const progress=LevelUpLifeLogic.getChallengeProgress(c,state,Date.now());
   if(progress.status!=='claimable')return alert(progress.status==='expired'?'挑战已过期。':'还没有完成挑战。');
   if(!confirm('确认兑换奖励：'+c.reward+'？'))return;
-  c.status='claimed';state.luckyCoins+=1;log('限时挑战已兑换：'+c.name,'🎁 '+c.reward+' · +1 幸运币');save();
+  c.status='claimed';state.luckyCoins+=1;addUsedPrizeUsage(c.reward,'限时挑战','challenge-redeem','完成限时挑战后兑换');log('限时挑战已兑换：'+c.name,'🎁 '+c.reward+' · +1 幸运币');save();
 }
 function deleteChallenge(id){if(confirm('删除这个限时挑战？')){state.challenges=state.challenges.filter(x=>x.id!==id);save()}}
 
@@ -1053,6 +1115,53 @@ function renderSpecialCards(){
   $('specialCardCatalog').innerHTML=[1,2,3].map(rarity=>`<div class="note"><strong class="rarity-${rarity}">${rarityLabel(rarity)}</strong> · ${rarity===1?'75%':rarity===2?'20%':'5%'}<div class="card-catalog">${LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>card.rarity===rarity).map(card=>`<div class="card-entry"><div><div class="card-name">${card.icon} ${card.name}</div><div class="card-desc">${esc(card.description)}</div></div><span class="tag">${rarity===1?'9.375%':rarity===2?'4%':'1%'}</span></div>`).join('')}</div></div>`).join('');
   const last=state.lastSpecialCard&&cardById(state.lastSpecialCard.id);
   $('specialCardResult').innerHTML=last?'上次抽到：<b class="rarity-'+last.rarity+'">'+last.icon+' '+esc(last.name)+'</b> · '+rarityLabel(last.rarity)+(state.lastSpecialCard.pity?' · 已触发保底':''):'抽到的卡会显示在这里。';
+}
+
+function usageDateLabel(timestamp){
+  if(!timestamp)return '日期未记录';
+  return new Date(timestamp).toLocaleDateString('zh-CN',{year:'numeric',month:'numeric',day:'numeric'});
+}
+function usageRecordMarkup(record){
+  const encoded=encodeURIComponent(record.id);
+  const used=record.status==='used';
+  return '<div class="usage-record '+(used?'used':'')+'"><div><h3>'+esc(record.prize)+'</h3><div class="meta"><span class="tag">'+esc(record.source)+'</span><span class="tag">'+(used?'已使用 · '+usageDateLabel(record.usedAt):'待使用')+'</span></div>'+(record.note?'<div class="note">'+esc(record.note)+'</div>':'')+'</div><div class="usage-record-actions">'+(used?'<button class="btn" onclick="openUsageRecordSheet(decodeURIComponent(\''+encoded+'\'))">编辑</button>':'<button class="btn good" onclick="openUsageRecordSheet(decodeURIComponent(\''+encoded+'\'))">记录使用</button>')+'<button class="btn danger" onclick="deleteUsageRecord(decodeURIComponent(\''+encoded+'\'))">删除</button></div></div>';
+}
+function switchUsageTab(tab){
+  const unused=tab==='unused';
+  $('usageTabUnused').classList.toggle('active',unused);$('usageTabUsed').classList.toggle('active',!unused);
+  $('usageUnusedPanel').classList.toggle('active',unused);$('usageUsedPanel').classList.toggle('active',!unused);
+}
+function openUsageRecordSheet(id){
+  const record=state.prizeUsageRecords.find(item=>item.id===id);if(!record)return;
+  $('usageRecordSheet').dataset.recordId=record.id;
+  $('usageRecordSheetTitle').textContent=record.status==='used'?'编辑奖励使用记录':'记录奖励使用';
+  $('usageRecordPrize').innerHTML='<strong>'+esc(record.prize)+'</strong><div class="note">来源：'+esc(record.source)+'</div>';
+  $('usageRecordDate').value=record.usedAt?localDateKey(new Date(record.usedAt)):localDateKey();
+  $('usageRecordNote').value=record.note||'';
+  $('usageRecordSheet').classList.add('show');
+}
+function saveUsageRecord(){
+  const id=$('usageRecordSheet').dataset.recordId,date=$('usageRecordDate').value,note=$('usageRecordNote').value.trim();
+  if(!id||!date)return alert('请选择使用日期。');
+  const result=LevelUpLifeLogic.updatePrizeUsageRecord(state,id,{usedDate:date,note},Date.now());
+  if(!result.updated)return alert(result.reason==='future-date'?'使用日期不能晚于今天。':'使用日期格式不正确。');
+  state=result.state;closeSheet('usageRecordSheet');switchUsageTab('used');save();
+}
+function deleteUsageRecord(id){
+  const record=state.prizeUsageRecords.find(item=>item.id===id);if(!record)return;
+  if(!confirm('删除「'+record.prize+'」的使用记录？不会回滚抽奖或积分。'))return;
+  state=LevelUpLifeLogic.deletePrizeUsageRecord(state,id).state;save();
+}
+function renderPrizeUsage(){
+  const records=Array.isArray(state.prizeUsageRecords)?state.prizeUsageRecords:[];
+  const unused=records.filter(record=>record.status!=='used');
+  const used=records.filter(record=>record.status==='used').sort((a,b)=>(Number(b.usedAt)||0)-(Number(a.usedAt)||0));
+  const monthKey=localDateKey().slice(0,7);
+  const monthUsed=used.filter(record=>record.usedAt&&localDateKey(new Date(record.usedAt)).slice(0,7)===monthKey).length;
+  const latest=used[0]?.usedAt?usageDateLabel(used[0].usedAt):'暂无';
+  $('usageStats').innerHTML='<div class="usage-stat"><strong>'+unused.length+'</strong>待使用</div><div class="usage-stat"><strong>'+monthUsed+'</strong>本月已使用</div><div class="usage-stat"><strong>'+latest+'</strong>最近使用</div>';
+  $('unusedPrizeList').innerHTML=unused.length?unused.map(usageRecordMarkup).join(''):'<div class="empty">暂无待使用奖励。抽到的普通奖品和特殊卡会自动出现在这里。</div>';
+  $('usedPrizeList').innerHTML=used.length?used.map(usageRecordMarkup).join(''):'<div class="empty">还没有消费记录。</div>';
 }
 
 function exportData(){
@@ -1169,6 +1278,7 @@ function render(){
     </div>`).join(''):'<div class="empty">还没有 Boss。</div>';
 
   $('history').innerHTML=state.history.length?state.history.map(h=>`<div class="history-row"><strong>${esc(h.title)} ${h.delta?('· '+esc(h.delta)):''}</strong><span>${esc(h.time)}</span></div>`).join(''):'<div class="empty">完成任务和兑换奖励后会记录在这里。</div>';
+  renderPrizeUsage();
   renderPrizeManager();
 }
 if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad|iPod/i.test(navigator.userAgent)){

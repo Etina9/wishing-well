@@ -284,6 +284,85 @@
     };
   }
 
+  function normalizePrizeUsageRecord(record = {}) {
+    const prize = String(record.prize || record.name || "").trim();
+    if (!prize) return null;
+    const status = record.status === "used" ? "used" : "unused";
+    const hasUsedAt = record.usedAt !== null && record.usedAt !== undefined && record.usedAt !== "";
+    const usedAtValue = Number(record.usedAt);
+    return {
+      id: String(record.id || `usage-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+      prize,
+      source: String(record.source || "未注明来源").trim() || "未注明来源",
+      sourceType: String(record.sourceType || "other").trim() || "other",
+      obtainedAt: Math.max(0, Number(record.obtainedAt) || 0),
+      status,
+      usedAt: status === "used" && hasUsedAt && Number.isFinite(usedAtValue) ? usedAtValue : null,
+      note: String(record.note || "").trim(),
+    };
+  }
+
+  function normalizePrizeUsageRecords(records = []) {
+    const seen = new Set();
+    return (Array.isArray(records) ? records : [])
+      .map(normalizePrizeUsageRecord)
+      .filter((record) => {
+        if (!record || seen.has(record.id)) return false;
+        seen.add(record.id);
+        return true;
+      })
+      .slice(0, 300);
+  }
+
+  function addPrizeUsageRecord(state, details = {}, nowMs = Date.now()) {
+    const next = normalizeState(state);
+    const record = normalizePrizeUsageRecord({
+      ...details,
+      id: details.id || `usage-${nowMs}-${Math.random().toString(36).slice(2, 8)}`,
+      obtainedAt: details.obtainedAt ?? nowMs,
+      status: "unused",
+      usedAt: null,
+      note: details.note || "",
+    });
+    if (!record) return { state: next, record: null, added: false };
+    next.prizeUsageRecords = [record, ...next.prizeUsageRecords.filter((item) => item.id !== record.id)].slice(0, 300);
+    return { state: next, record, added: true };
+  }
+
+  function updatePrizeUsageRecord(state, recordId, patch = {}, nowMs = Date.now()) {
+    const next = normalizeState(state);
+    const id = String(recordId || "");
+    const record = next.prizeUsageRecords.find((item) => item.id === id);
+    if (!record) return { state: next, updated: false, reason: "not-found" };
+
+    const todayKey = localDateKeyFromMs(nowMs);
+    const usedDate = String(patch.usedDate || "").trim();
+    if (usedDate && !/^\d{4}-\d{2}-\d{2}$/.test(usedDate)) {
+      return { state: next, updated: false, reason: "invalid-date" };
+    }
+    if (usedDate && usedDate > todayKey) {
+      return { state: next, updated: false, reason: "future-date" };
+    }
+
+    if (usedDate) {
+      record.status = "used";
+      record.usedAt = new Date(`${usedDate}T12:00:00`).getTime();
+    } else if (patch.status === "unused") {
+      record.status = "unused";
+      record.usedAt = null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "note")) record.note = String(patch.note || "").trim();
+    return { state: next, updated: true, record };
+  }
+
+  function deletePrizeUsageRecord(state, recordId) {
+    const next = normalizeState(state);
+    const id = String(recordId || "");
+    const before = next.prizeUsageRecords.length;
+    next.prizeUsageRecords = next.prizeUsageRecords.filter((record) => record.id !== id);
+    return { state: next, deleted: next.prizeUsageRecords.length !== before };
+  }
+
   function normalizeState(state = {}, defaults = {}) {
     const out = Object.assign(clone(defaults), clone(state));
     out.tasks = (Array.isArray(state.tasks) ? state.tasks : out.tasks || []).map(normalizeTask);
@@ -316,6 +395,7 @@
     out.lastDraw = out.lastDraw && typeof out.lastDraw === "object" ? { ...out.lastDraw } : null;
     out.lastSpecialCard = out.lastSpecialCard && typeof out.lastSpecialCard === "object" ? { ...out.lastSpecialCard } : null;
     out.heldPrizes = Array.isArray(out.heldPrizes) ? out.heldPrizes.slice(0, 30) : [];
+    out.prizeUsageRecords = normalizePrizeUsageRecords(out.prizeUsageRecords);
     out.challengePauseUsed = out.challengePauseUsed && typeof out.challengePauseUsed === "object"
       ? { ...out.challengePauseUsed }
       : {};
@@ -495,6 +575,10 @@
     getOverallCheckInGrid,
     normalizeChallenge,
     normalizeState,
+    normalizePrizeUsageRecords,
+    addPrizeUsageRecord,
+    updatePrizeUsageRecord,
+    deletePrizeUsageRecord,
     claimDailyLuckyCoin,
     normalizePools,
     parseBulkRewardText,

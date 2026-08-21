@@ -291,7 +291,7 @@
     <section id="specialDrawPanel" class="draw-panel">
       <section class="card special-card">
         <h2>🎫 特殊卡池</h2>
-        <p class="sub">用幸运币抽取特殊奖励。每天第一次打开自动获得 1 枚；连续 4 次抽到普通卡后，第 5 抽触发保底。</p>
+        <p class="sub">每次消耗 3 枚幸运币抽取 1 张特殊卡。每天第一次打开自动获得 1 枚；连续 4 次抽到普通卡后，第 5 抽触发保底。</p>
         <div class="score-row">
           <div class="coin-count">🪙 <span id="luckyCoinCount">0</span> <small>幸运币</small></div>
           <div class="mini-stat" id="specialCardStatus">下一抽：普通概率</div>
@@ -302,7 +302,7 @@
           <div><b>5%</b>★★★ 传说</div>
         </div>
         <div class="toolbar">
-          <button class="btn primary" onclick="drawSpecialCardFromUi()">抽一张 · 1 幸运币</button>
+          <button class="btn primary" onclick="drawSpecialCardFromUi()">抽一张 · 3 幸运币</button>
           <button class="btn" onclick="openCoinRules()">🪙 幸运币规则</button>
         </div>
         <div id="specialCardResult" class="note" style="margin-top:10px">抽到的卡会显示在这里。</div>
@@ -394,6 +394,7 @@
 <div id="coinRuleSheet" class="sheet" onclick="sheetBackdrop(event,'coinRuleSheet')">
   <div class="sheet-panel">
     <h2>🪙 幸运币怎么获得</h2>
+    <div class="item"><strong>抽卡消耗 · 3 枚幸运币</strong><div class="note">每次抽取特殊卡池消耗 3 枚幸运币；现有幸运币不会被清空。</div></div>
     <div class="item"><strong>1. 每日首次打开 · +1</strong><div class="note">每天第一次打开许愿池自动领取 1 枚，当天不会重复发放；没打开的日子不会补发。</div></div>
     <div class="item" style="margin-top:8px"><strong>2. 当天完成 3 个任务 · +1</strong><div class="note">循环任务和一次性任务都计入当天完成次数。</div></div>
     <div class="item" style="margin-top:8px"><strong>3. 连续 7 天完成任务 · +1</strong><div class="note">连续完成 7 天时获得 1 枚，之后每完成一个新的 7 天里程碑再获得 1 枚。</div></div>
@@ -553,14 +554,14 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=17"></script>
+<script src="./level-up-life-logic.js?v=18"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:13, score:0, earned:0, spent:0,
+  version:14, score:0, earned:0, spent:0,
   taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
@@ -988,7 +989,10 @@ function normalTierLabel(tier){return ({small:'★ 小赏 · ≤20元',medium:'�
 function normalTierClass(tier){return 'tier-'+(['small','medium','large','grand'].includes(tier)?tier:'small')}
 function drawSpecialCardFromUi(){
   const result=LevelUpLifeLogic.drawSpecialCard(state);
-  if(!result.card)return alert('还没有幸运币。每天首次打开、完成任务或挑战都可以获得。');
+  if(!result.card){
+    const missing=Math.max(0,LevelUpLifeLogic.SPECIAL_CARD_DRAW_COST-(Number(state.luckyCoins)||0));
+    return alert(`还差 ${missing} 枚幸运币。每天首次打开、完成任务或挑战都可以获得。`);
+  }
   state=result.state;
   state.lastSpecialCard={id:result.card.id,pity:result.pity,time:Date.now()};
   addPrizeUsage(result.card.name,'特殊卡池','special-card',state.lastSpecialCard.time);
@@ -1163,7 +1167,8 @@ function deleteChallenge(id){if(confirm('删除这个限时挑战？')){state.ch
 
 function renderSpecialCards(){
   $('luckyCoinCount').textContent=state.luckyCoins;
-  $('specialCardStatus').textContent=state.specialCardPity>=4?'下一抽：保底（★★ 95% / ★★★ 5%）':'普通概率 · 已连续 '+state.specialCardPity+' 次 ★';
+  const drawCount=Math.floor((Number(state.luckyCoins)||0)/LevelUpLifeLogic.SPECIAL_CARD_DRAW_COST);
+  $('specialCardStatus').textContent=(state.specialCardPity>=4?'下一抽：保底（★★ 95% / ★★★ 5%）':'普通概率 · 已连续 '+state.specialCardPity+' 次 ★')+' · 可抽 '+drawCount+' 次';
   const owned=LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>Number(state.specialCards[card.id])>0);
   $('specialCardList').innerHTML=owned.length?owned.map(card=>`<div class="card-entry"><div><div class="card-name rarity-${card.rarity}">${card.icon} ${card.name} ×${state.specialCards[card.id]} <span class="tag">${rarityLabel(card.rarity)}</span></div><div class="card-desc">${esc(card.description)}</div></div><button class="btn" onclick="useSpecialCard('${card.id}')">使用</button></div>`).join(''):'<div class="empty">还没有特殊卡，先攒幸运币抽一张。</div>';
   $('specialCardCatalog').innerHTML=[1,2,3].map(rarity=>`<div class="note"><strong class="rarity-${rarity}">${rarityLabel(rarity)}</strong> · ${rarity===1?'75%':rarity===2?'20%':'5%'}<div class="card-catalog">${LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>card.rarity===rarity).map(card=>`<div class="card-entry"><div><div class="card-name">${card.icon} ${card.name}</div><div class="card-desc">${esc(card.description)}</div></div><span class="tag">${rarity===1?'9.375%':rarity===2?'4%':'1%'}</span></div>`).join('')}</div></div>`).join('');

@@ -11,6 +11,7 @@
     Object.freeze({ name: "其他", multiplier: 1, hot: false, builtIn: true }),
   ]);
   const SPECIAL_CARD_RARITY_ODDS = Object.freeze({ ordinary: 0.75, rare: 0.2, legendary: 0.05 });
+  const SPECIAL_CARD_DRAW_COST = 3;
   const SPECIAL_CARD_CATALOG = Object.freeze([
     { id: "again", rarity: 1, icon: "🎫", name: "再来一次", description: "本次抽奖结果不满意，可以重抽一次。" },
     { id: "free-draw", rarity: 1, icon: "🎁", name: "免费一番赏", description: "免费抽一次普通一番赏。" },
@@ -482,7 +483,7 @@
 
   function drawSpecialCard(state, random = Math.random) {
     const current = normalizeState(state);
-    if (current.luckyCoins < 1) return { state: clone(state), card: null, pity: false };
+    if (current.luckyCoins < SPECIAL_CARD_DRAW_COST) return { state: clone(state), card: null, pity: false };
 
     const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0));
     const pity = current.specialCardPity >= 4;
@@ -501,7 +502,7 @@
     const cardIndex = Math.min(cards.length - 1, Math.floor(Math.min(0.999999999, Math.max(0, Number(random()) || 0)) * cards.length));
     const card = cards[cardIndex];
     const next = normalizeState(current);
-    next.luckyCoins -= 1;
+    next.luckyCoins -= SPECIAL_CARD_DRAW_COST;
     next.specialCardPity = rarity === 1 ? current.specialCardPity + 1 : 0;
     next.specialCards[card.id] = (next.specialCards[card.id] || 0) + 1;
     return { state: next, card, pity };
@@ -624,6 +625,7 @@
   root.LevelUpLifeLogic = {
     SPECIAL_CARD_CATALOG,
     SPECIAL_CARD_RARITY_ODDS,
+    SPECIAL_CARD_DRAW_COST,
     DEFAULT_TASK_CATEGORIES,
     NORMAL_REWARD_TIER_ODDS,
     NORMAL_REWARD_TIERS,

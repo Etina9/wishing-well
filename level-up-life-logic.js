@@ -68,6 +68,79 @@
     return categories.find((category) => category.name === name) || { name, multiplier: 1, hot: false, builtIn: false };
   }
 
+  function setTaskCategoryHot(state, categoryName, enabled = true) {
+    const next = clone(state);
+    const name = String(categoryName || "").trim();
+    next.taskCategories = normalizeTaskCategories(next.taskCategories, next.tasks).map((category) => {
+      if (category.name !== name) return category;
+      const hot = Boolean(enabled);
+      return { ...category, hot, multiplier: hot ? 2 : 1 };
+    });
+    return next;
+  }
+
+  function normalizeTaskCheckIns(checkIns = {}) {
+    if (!checkIns || typeof checkIns !== "object") return {};
+    const output = {};
+    Object.entries(checkIns).forEach(([taskId, dates]) => {
+      if (!dates || typeof dates !== "object") return;
+      const cleanDates = {};
+      Object.entries(dates).forEach(([dateKey, checked]) => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey) && checked) cleanDates[dateKey] = true;
+      });
+      if (Object.keys(cleanDates).length) output[String(taskId)] = cleanDates;
+    });
+    return output;
+  }
+
+  function recordTaskCheckIn(state, taskId, dateKey, checked = true) {
+    const next = clone(state);
+    const id = String(taskId || "");
+    const key = String(dateKey || "");
+    next.tasks = (Array.isArray(next.tasks) ? next.tasks : []).map(normalizeTask);
+    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(key) || !next.tasks.some((task) => String(task.id) === id)) return { state: next, changed: false };
+    next.taskCheckIns = normalizeTaskCheckIns(next.taskCheckIns);
+    const dates = { ...(next.taskCheckIns[id] || {}) };
+    if (checked) dates[key] = true;
+    else delete dates[key];
+    if (Object.keys(dates).length) next.taskCheckIns[id] = dates;
+    else delete next.taskCheckIns[id];
+    return { state: next, changed: true, checked: Boolean(checked) };
+  }
+
+  function getCheckInGrid(state, taskId, nowMs = Date.now(), weeks = 4) {
+    return buildCheckInGrid(state, nowMs, weeks, (dateKey) => Boolean(state?.taskCheckIns?.[String(taskId)]?.[dateKey]));
+  }
+
+  function getOverallCheckInGrid(state, nowMs = Date.now(), weeks = 4) {
+    const counts = {};
+    Object.values(normalizeTaskCheckIns(state?.taskCheckIns)).forEach((dates) => {
+      Object.keys(dates).forEach((dateKey) => { counts[dateKey] = (counts[dateKey] || 0) + 1; });
+    });
+    return buildCheckInGrid(state, nowMs, weeks, (dateKey) => counts[dateKey] || 0);
+  }
+
+  function buildCheckInGrid(state, nowMs, weeks, valueForDate) {
+    const rowCount = Math.max(1, Math.floor(Number(weeks) || 4));
+    const todayKey = localDateKeyFromMs(nowMs);
+    const today = new Date(nowMs);
+    today.setHours(12, 0, 0, 0);
+    const mondayOffset = (today.getDay() + 6) % 7;
+    today.setDate(today.getDate() - mondayOffset - (rowCount - 1) * 7);
+    const rows = [];
+    for (let row = 0; row < rowCount; row += 1) {
+      const days = [];
+      for (let column = 0; column < 7; column += 1) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + row * 7 + column);
+        const dateKey = localDateKeyFromMs(date.getTime());
+        days.push({ dateKey, checked: Boolean(valueForDate(dateKey)), count: Number(valueForDate(dateKey)) || 0, isToday: dateKey === todayKey, isFuture: dateKey > todayKey });
+      }
+      rows.push(days);
+    }
+    return { weeks: rows, todayKey };
+  }
+
   function normalizeSpecialCards(cards) {
     const knownIds = new Set(SPECIAL_CARD_CATALOG.map((card) => card.id));
     const out = {};
@@ -215,6 +288,7 @@
     const out = Object.assign(clone(defaults), clone(state));
     out.tasks = (Array.isArray(state.tasks) ? state.tasks : out.tasks || []).map(normalizeTask);
     out.taskCategories = normalizeTaskCategories(out.taskCategories, out.tasks);
+    out.taskCheckIns = normalizeTaskCheckIns(out.taskCheckIns);
     out.challenges = (Array.isArray(state.challenges) ? state.challenges : out.challenges || []).map(normalizeChallenge);
     out.score = Number(out.score) || 0;
     out.earned = Number(out.earned) || 0;
@@ -391,6 +465,9 @@
         challenge.completedTaskIds.push(String(task.id));
       }
     });
+    next.taskCheckIns = normalizeTaskCheckIns(next.taskCheckIns);
+    const checkInDate = localDateKeyFromMs(nowMs);
+    next.taskCheckIns[String(task.id)] = { ...(next.taskCheckIns[String(task.id)] || {}), [checkInDate]: true };
     return {
       state: refreshChallengeStatuses(next, nowMs),
       awarded: points,
@@ -411,6 +488,11 @@
     normalizeTask,
     normalizeTaskCategories,
     getTaskCategory,
+    setTaskCategoryHot,
+    normalizeTaskCheckIns,
+    recordTaskCheckIn,
+    getTaskCheckInGrid: getCheckInGrid,
+    getOverallCheckInGrid,
     normalizeChallenge,
     normalizeState,
     claimDailyLuckyCoin,

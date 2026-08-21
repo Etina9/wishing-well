@@ -97,6 +97,22 @@
     .task-check{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:13px}
     .task-check input{width:auto}
     .archived-task{opacity:.68}
+    .checkin-card{background:#fffdf8}
+    .checkin-card h2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .checkin-summary{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;color:var(--muted);font-size:12px}
+    .checkin-summary strong{color:var(--accent);font-size:14px}
+    .checkin-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px;color:var(--muted);font-size:10px;text-align:center}
+    .checkin-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+    .checkin-day{min-width:0;min-height:40px;border:1px solid #d9e2e2;border-radius:7px;background:#f4f7f6;color:#829095;font-size:10px;font-weight:800;line-height:1.1;padding:4px 2px;cursor:pointer}
+    .checkin-day.checked{background:#dcefe7;border-color:#9fcdbb;color:#27745a}
+    .checkin-day.checked::first-line{font-size:15px}
+    .checkin-day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+    .checkin-day.future{opacity:.42;cursor:default}
+    .checkin-day.overall-count{font-size:12px}
+    .checkin-details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+    .checkin-details summary{cursor:pointer;color:var(--accent);font-size:12px;font-weight:800;min-height:44px;display:flex;align-items:center}
+    .checkin-details .checkin-grid{margin-top:6px}
+    .checkin-hint{font-size:11px;color:var(--muted);margin-top:7px}
     .pool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .pool{
       padding:14px;border-radius:10px;border:1px solid var(--line);
@@ -207,6 +223,11 @@
   </section>
 
   <main id="tasksView" class="view active">
+    <section class="card checkin-card">
+      <h2>✅ 打卡记录</h2>
+      <p class="sub">按周查看整体任务完成情况。每个任务也有自己的独立打卡格子。</p>
+      <div id="checkInOverview"></div>
+    </section>
     <section class="card">
       <h2>📋 任务池</h2>
       <p class="sub">以 0.5～2 分的小任务为主，完成就即时加分。任务作为模板保留，可以重复完成。</p>
@@ -446,14 +467,14 @@
 <div id="categorySheet" class="sheet" onclick="sheetBackdrop(event,'categorySheet')">
   <div class="sheet-panel">
     <h2>🏷️ 任务分类</h2>
-    <p class="sub">新增分类默认按 1 倍积分。面试分类是内置 HOT 分类，固定按 2 倍加分。</p>
+    <p class="sub">新增分类默认普通 ×1；任何分类都可以切换成 HOT ×2。面试分类默认是 HOT。</p>
     <div class="field"><label>新增分类</label><div class="wish-row"><input id="newCategoryName" placeholder="例如：健康 / 阅读 / 家务"><button class="btn primary" onclick="addTaskCategory()">添加</button></div></div>
     <div id="taskCategories" class="list" style="margin-top:12px"></div>
     <button class="btn" onclick="closeSheet('categorySheet')" style="margin-top:14px">关闭</button>
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=12"></script>
+<script src="./level-up-life-logic.js?v=13"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
@@ -461,7 +482,7 @@ const STORAGE='level-up-life-v6';
 
 const defaults={
   version:9, score:0, earned:0, spent:0,
-  taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES),
+  taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
     {id:uid(),name:'完成30分钟运动',category:'减肥 / 运动',points:1,note:''},
@@ -694,7 +715,10 @@ function renderTaskCategoryOptions(selected=''){
   select.value=names.includes(selected)?selected:(names.includes('其他')?'其他':names[0]);
 }
 function renderTaskCategories(){
-  $('taskCategories').innerHTML=state.taskCategories.map(category=>`<div class="item"><div class="item-top"><div><h3>${esc(category.name)}</h3><div class="meta"><span class="tag">${category.hot?'🔥 HOT · ×2':'普通 · ×1'}</span>${category.builtIn?'<span class="tag">内置</span>':'<span class="tag">自定义</span>'}</div></div>${category.builtIn?'<span class="note">固定</span>':`<button class="btn danger" onclick="deleteTaskCategory('${esc(category.name)}')">删除</button>`}</div></div>`).join('');
+  $('taskCategories').innerHTML=state.taskCategories.map(category=>{
+    const encoded=encodeURIComponent(category.name);
+    return `<div class="item"><div class="item-top"><div><h3>${esc(category.name)}</h3><div class="meta"><span class="tag">${category.hot?'🔥 HOT · ×2':'普通 · ×1'}</span>${category.builtIn?'<span class="tag">内置</span>':'<span class="tag">自定义</span>'}</div></div><div class="item-actions" style="margin-top:0"><button class="btn ${category.hot?'pink':'good'}" onclick="toggleTaskCategoryHot(decodeURIComponent('${encoded}'))">${category.hot?'取消 HOT':'设为 HOT ×2'}</button>${category.builtIn?'<span class="note">固定</span>':`<button class="btn danger" onclick="deleteTaskCategory(decodeURIComponent('${encoded}'))">删除</button>`}</div></div></div>`;
+  }).join('');
 }
 function openCategorySheet(){
   $('newCategoryName').value='';renderTaskCategories();document.getElementById('categorySheet').classList.add('show');
@@ -705,6 +729,12 @@ function addTaskCategory(){
   if(state.taskCategories.some(category=>category.name===name))return alert('这个分类已经存在了。');
   state.taskCategories.push({name,multiplier:1,hot:false,builtIn:false});
   $('newCategoryName').value='';renderTaskCategoryOptions(name);renderTaskCategories();save();
+}
+function toggleTaskCategoryHot(name){
+  const category=state.taskCategories.find(item=>item.name===name);if(!category)return;
+  state=LevelUpLifeLogic.setTaskCategoryHot(state,name,!category.hot);
+  log((!category.hot?'设为 HOT 分类：':'取消 HOT 分类：')+name,!category.hot?'积分 ×2':'恢复积分 ×1');
+  renderTaskCategoryOptions();save();
 }
 function deleteTaskCategory(name){
   const category=state.taskCategories.find(item=>item.name===name);
@@ -748,6 +778,38 @@ function deleteTask(id){
   if(used)return alert('这个任务正在进行中的限时挑战里，请先删除挑战再删除任务。');
   if(!confirm('确定删除这个任务模板吗？'))return;
   state.tasks=state.tasks.filter(x=>x.id!==id);save();
+}
+
+const CHECKIN_WEEKDAYS=['一','二','三','四','五','六','日'];
+function checkInDateLabel(dateKey){return String(dateKey||'').slice(5).replace('-', '/')}
+function renderCheckInGridMarkup(grid,taskId=null,overall=false){
+  const weekdays='<div class="checkin-weekdays">'+CHECKIN_WEEKDAYS.map(day=>'<span>'+day+'</span>').join('')+'</div>';
+  const cells=grid.weeks.flat().map(day=>{
+    const checked=overall?day.count>0:day.checked;
+    const label=overall?(day.count?String(day.count):'·'):(checked?'✓':checkInDateLabel(day.dateKey).slice(-2));
+    const classes='checkin-day'+(checked?' checked':'')+(day.isToday?' today':'')+(day.isFuture?' future':'')+(overall?' overall-count':'');
+    const title=overall?`${day.dateKey} · ${day.count} 个任务完成`:`${day.dateKey} · ${checked?'已打卡':'未打卡'}`;
+    if(overall)return '<div class="'+classes+'" title="'+esc(title)+'">'+label+'</div>';
+    const encodedId=encodeURIComponent(taskId);
+    return '<button class="'+classes+'" type="button" title="'+esc(title)+'" '+(day.isFuture?'disabled':'onclick="toggleTaskCheckIn(decodeURIComponent(\''+encodedId+'\'),\''+day.dateKey+'\')"')+'>'+label+'</button>';
+  }).join('');
+  return weekdays+'<div class="checkin-grid">'+cells+'</div>';
+}
+function renderCheckInOverview(){
+  const grid=LevelUpLifeLogic.getOverallCheckInGrid(state,Date.now(),4);
+  const days=grid.weeks.flat(),activeDays=days.filter(day=>day.count>0).length,total=days.reduce((sum,day)=>sum+day.count,0),today=days.find(day=>day.isToday);
+  $('checkInOverview').innerHTML='<div class="checkin-summary"><span>最近 4 周 · <strong>'+activeDays+'</strong> 个打卡日</span><span>共完成 <strong>'+total+'</strong> 次'+(today?' · 今天 '+today.count+' 次':'')+'</span></div>'+renderCheckInGridMarkup(grid,null,true)+'<div class="checkin-hint">每个格子代表一天，数字是当天完成的任务数。</div>';
+}
+function renderTaskCheckIn(task){
+  const grid=LevelUpLifeLogic.getTaskCheckInGrid(state,task.id,Date.now(),4);
+  const checked=grid.weeks.flat().filter(day=>day.checked).length;
+  return '<details class="checkin-details"><summary>📅 最近 4 周打卡 · '+checked+' / 28 天</summary>'+renderCheckInGridMarkup(grid,task.id,false)+'<div class="checkin-hint">点击格子可以补记或取消这一天的打卡。</div></details>';
+}
+function toggleTaskCheckIn(taskId,dateKey){
+  if(dateKey>localDateKey())return;
+  const checked=Boolean(state.taskCheckIns?.[taskId]?.[dateKey]);
+  const result=LevelUpLifeLogic.recordTaskCheckIn(state,taskId,dateKey,!checked);
+  state=result.state;save();
 }
 
 function addWish(){
@@ -1013,6 +1075,7 @@ function resetAll(){
 function render(){
   state=LevelUpLifeLogic.refreshChallengeStatuses(state,Date.now());
   $('score').textContent=fmt(state.score);$('earned').textContent=fmt(state.earned);$('spent').textContent=fmt(state.spent);
+  renderCheckInOverview();
   renderSpecialCards();
   const activeTasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
   $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>{
@@ -1021,6 +1084,7 @@ function render(){
     <div class="item ${hot?'hot-task':''}">
       <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}${t.repeatable===false?'<span class="tag">一次性</span>':'<span class="tag">循环</span>'}${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">${hot?'<strong>+ '+fmt(displayPoints)+'</strong><small>原 '+fmt(t.points)+' 分 · ×2</small>':'+'+fmt(displayPoints)}</div></div>
       ${t.note?`<div class="note">${esc(t.note)}</div>`:''}
+      ${renderTaskCheckIn(t)}
       <div class="item-actions"><button class="btn good" onclick="completeTask('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
     </div>`;
   }).join(''):'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
@@ -1031,6 +1095,7 @@ function render(){
     return `
     <div class="item archived-task">
       <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">一次性 · 已完成</span><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}</div></div><div class="pts">+${fmt(displayPoints)}</div></div>
+      ${renderTaskCheckIn(t)}
       <div class="item-actions"><button class="btn" onclick="openTaskSheet('${t.id}')">查看 / 编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
     </div>`;
   }).join(''):'<div class="empty">完成后的一次性任务会归档在这里。</div>';

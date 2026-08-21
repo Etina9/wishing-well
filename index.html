@@ -513,14 +513,27 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=14"></script>
+<div id="taskCompletionSheet" class="sheet" onclick="sheetBackdrop(event,'taskCompletionSheet')">
+  <div class="sheet-panel">
+    <h2>完成任务</h2>
+    <div id="taskCompletionName" class="manager-summary"></div>
+    <div class="field"><label>完成备注（可选）</label><textarea id="taskCompletionNote" placeholder="例如：完成了第 1～3 题；今天状态不错；和谁一起完成"></textarea></div>
+    <p class="sub">不需要备注时直接点“完成任务”即可。</p>
+    <div class="toolbar">
+      <button class="btn good" onclick="saveTaskCompletion()">✓ 完成任务</button>
+      <button class="btn" onclick="closeSheet('taskCompletionSheet')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script src="./level-up-life-logic.js?v=15"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:10, score:0, earned:0, spent:0,
+  version:11, score:0, earned:0, spent:0,
   taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
@@ -541,7 +554,7 @@ const defaults={
     {id:uid(),name:'求职冲刺 Boss',condition:'完成 3 次模拟面试',reward:'自定义一个大奖',status:'active'}
   ],
   challenges:[],
-  history:[], prizeUsageRecords:[]
+  history:[], prizeUsageRecords:[], taskCompletionRecords:[]
 };
 
 const DEMO_REWARDS=[
@@ -807,7 +820,19 @@ function saveTask(){
   }
   closeSheet('taskSheet');save();
 }
-function completeTask(id){
+function openTaskCompletionSheet(id){
+  const task=state.tasks.find(item=>item.id===id);if(!task)return;
+  $('taskCompletionSheet').dataset.taskId=task.id;
+  $('taskCompletionName').innerHTML='<strong>'+esc(task.name)+'</strong><div class="note">完成后获得 '+fmt(task.points*LevelUpLifeLogic.getTaskCategory(state,task.category).multiplier)+' 分</div>';
+  $('taskCompletionNote').value='';
+  $('taskCompletionSheet').classList.add('show');
+}
+function saveTaskCompletion(){
+  const id=$('taskCompletionSheet').dataset.taskId,note=$('taskCompletionNote').value.trim();
+  if(!id)return;
+  closeSheet('taskCompletionSheet');completeTask(id,note);
+}
+function completeTask(id,note=''){
   const t=state.tasks.find(x=>x.id===id); if(!t)return;
   const result=LevelUpLifeLogic.completeTask(state,id,Date.now());
   if(!result.awarded){
@@ -815,7 +840,9 @@ function completeTask(id){
     return;
   }
   state=result.state;
-  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分');save();showTaskCelebration(t,result);
+  const completion=LevelUpLifeLogic.addTaskCompletionRecord(state,{taskId:t.id,taskName:t.name,note},Date.now());
+  state=completion.state;
+  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分'+(note?' · '+note:''));save();showTaskCelebration(t,result);
 }
 function showTaskCelebration(task,result){
   const toast=$('celebrationToast');if(!toast)return;
@@ -1194,7 +1221,7 @@ function render(){
       <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}${t.repeatable===false?'<span class="tag">一次性</span>':'<span class="tag">循环</span>'}${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">${hot?'<strong>+ '+fmt(displayPoints)+'</strong><small>原 '+fmt(t.points)+' 分 · ×2</small>':'+'+fmt(displayPoints)}</div></div>
       ${t.note?`<div class="note">${esc(t.note)}</div>`:''}
       ${renderTaskCheckIn(t)}
-      <div class="item-actions"><button class="btn good" onclick="completeTask('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
+      <div class="item-actions"><button class="btn good" onclick="openTaskCompletionSheet('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
     </div>`;
   }).join(''):'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
 

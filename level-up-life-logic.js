@@ -363,6 +363,44 @@
     return { state: next, deleted: next.prizeUsageRecords.length !== before };
   }
 
+  function normalizeTaskCompletionRecord(record = {}) {
+    const taskId = String(record.taskId || "").trim();
+    const taskName = String(record.taskName || "").trim();
+    if (!taskId && !taskName) return null;
+    return {
+      id: String(record.id || `task-completion-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+      taskId,
+      taskName: taskName || "未命名任务",
+      completedAt: Math.max(0, Number(record.completedAt) || 0),
+      note: String(record.note || "").trim(),
+    };
+  }
+
+  function normalizeTaskCompletionRecords(records = []) {
+    const seen = new Set();
+    return (Array.isArray(records) ? records : [])
+      .map(normalizeTaskCompletionRecord)
+      .filter((record) => {
+        if (!record || seen.has(record.id)) return false;
+        seen.add(record.id);
+        return true;
+      })
+      .slice(0, 500);
+  }
+
+  function addTaskCompletionRecord(state, details = {}, nowMs = Date.now()) {
+    const next = normalizeState(state);
+    const record = normalizeTaskCompletionRecord({
+      ...details,
+      id: details.id || `task-completion-${nowMs}-${Math.random().toString(36).slice(2, 8)}`,
+      completedAt: details.completedAt ?? nowMs,
+      note: details.note || "",
+    });
+    if (!record) return { state: next, record: null, added: false };
+    next.taskCompletionRecords = [record, ...next.taskCompletionRecords.filter((item) => item.id !== record.id)].slice(0, 500);
+    return { state: next, record, added: true };
+  }
+
   function normalizeState(state = {}, defaults = {}) {
     const out = Object.assign(clone(defaults), clone(state));
     out.tasks = (Array.isArray(state.tasks) ? state.tasks : out.tasks || []).map(normalizeTask);
@@ -396,6 +434,7 @@
     out.lastSpecialCard = out.lastSpecialCard && typeof out.lastSpecialCard === "object" ? { ...out.lastSpecialCard } : null;
     out.heldPrizes = Array.isArray(out.heldPrizes) ? out.heldPrizes.slice(0, 30) : [];
     out.prizeUsageRecords = normalizePrizeUsageRecords(out.prizeUsageRecords);
+    out.taskCompletionRecords = normalizeTaskCompletionRecords(out.taskCompletionRecords);
     out.challengePauseUsed = out.challengePauseUsed && typeof out.challengePauseUsed === "object"
       ? { ...out.challengePauseUsed }
       : {};
@@ -579,6 +618,8 @@
     addPrizeUsageRecord,
     updatePrizeUsageRecord,
     deletePrizeUsageRecord,
+    normalizeTaskCompletionRecords,
+    addTaskCompletionRecord,
     claimDailyLuckyCoin,
     normalizePools,
     parseBulkRewardText,

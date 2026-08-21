@@ -162,6 +162,8 @@
     .history-row{padding:10px 11px;border-radius:8px;background:#eee7dc;font-size:12px}
     .history-row strong{display:block;margin-bottom:3px}
     .history-row span{color:var(--muted)}
+    .history-note{margin-top:7px;color:#53656b;line-height:1.45}
+    .history-note-btn{min-height:32px;padding:5px 8px;margin-top:8px;font-size:11px}
     .usage-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
     .usage-stat{padding:10px 8px;border-radius:9px;background:#edf2f2;text-align:center;color:var(--muted);font-size:11px}
     .usage-stat strong{display:block;color:var(--accent);font-size:20px;line-height:1.1;margin-bottom:3px}
@@ -526,14 +528,26 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=15"></script>
+<div id="historyNoteSheet" class="sheet" onclick="sheetBackdrop(event,'historyNoteSheet')">
+  <div class="sheet-panel">
+    <h2>记录备注</h2>
+    <div id="historyNoteTitle" class="manager-summary"></div>
+    <div class="field"><label>备注（可选）</label><textarea id="historyNoteText" placeholder="例如：完成过程、当时的状态、具体结果"></textarea></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveHistoryNote()">保存备注</button>
+      <button class="btn" onclick="closeSheet('historyNoteSheet')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script src="./level-up-life-logic.js?v=16"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:11, score:0, earned:0, spent:0,
+  version:12, score:0, earned:0, spent:0,
   taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
@@ -631,7 +645,7 @@ function save(){localStorage.setItem(STORAGE,JSON.stringify(state));render()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function fmt(n){return Number(n).toFixed(1).replace(/\.0$/,'')}
 function now(){return new Date().toLocaleString()}
-function log(title,delta=''){state.history.unshift({id:uid(),time:now(),title,delta});state.history=state.history.slice(0,150)}
+function log(title,delta='',note=''){state.history.unshift({id:uid(),time:now(),title,delta,note:String(note||'').trim()});state.history=state.history.slice(0,150)}
 function addPrizeUsage(prize,source,sourceType,obtainedAt=Date.now()){
   const result=LevelUpLifeLogic.addPrizeUsageRecord(state,{prize,source,sourceType,obtainedAt});
   state=result.state;
@@ -842,7 +856,7 @@ function completeTask(id,note=''){
   state=result.state;
   const completion=LevelUpLifeLogic.addTaskCompletionRecord(state,{taskId:t.id,taskName:t.name,note},Date.now());
   state=completion.state;
-  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分'+(note?' · '+note:''));save();showTaskCelebration(t,result);
+  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分',note);save();showTaskCelebration(t,result);
 }
 function showTaskCelebration(task,result){
   const toast=$('celebrationToast');if(!toast)return;
@@ -1190,6 +1204,18 @@ function renderPrizeUsage(){
   $('unusedPrizeList').innerHTML=unused.length?unused.map(usageRecordMarkup).join(''):'<div class="empty">暂无待使用奖励。抽到的普通奖品和特殊卡会自动出现在这里。</div>';
   $('usedPrizeList').innerHTML=used.length?used.map(usageRecordMarkup).join(''):'<div class="empty">还没有消费记录。</div>';
 }
+function openHistoryNoteSheet(id){
+  const record=state.history.find(item=>item.id===id);if(!record)return;
+  $('historyNoteSheet').dataset.recordId=record.id;
+  $('historyNoteTitle').innerHTML='<strong>'+esc(record.title)+'</strong><div class="note">'+esc(record.time||'')+(record.delta?' · '+esc(record.delta):'')+'</div>';
+  $('historyNoteText').value=record.note||'';
+  $('historyNoteSheet').classList.add('show');
+}
+function saveHistoryNote(){
+  const id=$('historyNoteSheet').dataset.recordId,note=$('historyNoteText').value.trim();if(!id)return;
+  const result=LevelUpLifeLogic.updateHistoryNote(state,id,note);if(!result.updated)return alert('这条记录已经不存在了。');
+  state=result.state;closeSheet('historyNoteSheet');save();
+}
 
 function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -1304,7 +1330,7 @@ function render(){
       </div>
     </div>`).join(''):'<div class="empty">还没有 Boss。</div>';
 
-  $('history').innerHTML=state.history.length?state.history.map(h=>`<div class="history-row"><strong>${esc(h.title)} ${h.delta?('· '+esc(h.delta)):''}</strong><span>${esc(h.time)}</span></div>`).join(''):'<div class="empty">完成任务和兑换奖励后会记录在这里。</div>';
+  $('history').innerHTML=state.history.length?state.history.map(h=>`<div class="history-row"><strong>${esc(h.title)} ${h.delta?('· '+esc(h.delta)):''}</strong><span>${esc(h.time)}</span>${h.note?`<div class="history-note">备注：${esc(h.note)}</div>`:''}<button class="btn history-note-btn" onclick="openHistoryNoteSheet(decodeURIComponent('${encodeURIComponent(h.id)}'))">${h.note?'编辑备注':'添加备注'}</button></div>`).join(''):'<div class="empty">完成任务和兑换奖励后会记录在这里。</div>';
   renderPrizeUsage();
   renderPrizeManager();
 }

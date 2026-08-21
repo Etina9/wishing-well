@@ -401,6 +401,30 @@
     return { state: next, record, added: true };
   }
 
+  function normalizeHistoryRecords(records = []) {
+    return (Array.isArray(records) ? records : [])
+      .filter((record) => record && typeof record === "object")
+      .map((record) => ({
+        ...record,
+        id: String(record.id || `history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        time: String(record.time || ""),
+        title: String(record.title || "").trim(),
+        delta: String(record.delta || ""),
+        note: String(record.note || "").trim(),
+      }))
+      .filter((record) => record.title)
+      .slice(0, 150);
+  }
+
+  function updateHistoryNote(state, recordId, note) {
+    const next = normalizeState(state);
+    const id = String(recordId || "");
+    const record = next.history.find((item) => item.id === id);
+    if (!record) return { state: next, updated: false };
+    record.note = String(note || "").trim();
+    return { state: next, updated: true, record };
+  }
+
   function normalizeState(state = {}, defaults = {}) {
     const out = Object.assign(clone(defaults), clone(state));
     out.tasks = (Array.isArray(state.tasks) ? state.tasks : out.tasks || []).map(normalizeTask);
@@ -435,6 +459,7 @@
     out.heldPrizes = Array.isArray(out.heldPrizes) ? out.heldPrizes.slice(0, 30) : [];
     out.prizeUsageRecords = normalizePrizeUsageRecords(out.prizeUsageRecords);
     out.taskCompletionRecords = normalizeTaskCompletionRecords(out.taskCompletionRecords);
+    out.history = normalizeHistoryRecords(out.history);
     out.challengePauseUsed = out.challengePauseUsed && typeof out.challengePauseUsed === "object"
       ? { ...out.challengePauseUsed }
       : {};
@@ -620,6 +645,8 @@
     deletePrizeUsageRecord,
     normalizeTaskCompletionRecords,
     addTaskCompletionRecord,
+    normalizeHistoryRecords,
+    updateHistoryNote,
     claimDailyLuckyCoin,
     normalizePools,
     parseBulkRewardText,

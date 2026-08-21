@@ -4,6 +4,12 @@
   const NORMAL_REWARD_TIERS = Object.freeze(["small", "medium", "large", "grand"]);
   const NORMAL_BOX_SIZE = 50;
   const NORMAL_BOX_TIER_COUNTS = Object.freeze({ small: 35, medium: 10, large: 4, grand: 1 });
+  const DEFAULT_TASK_CATEGORIES = Object.freeze([
+    Object.freeze({ name: "减肥 / 运动", multiplier: 1, hot: false, builtIn: true }),
+    Object.freeze({ name: "工作 / 面试", multiplier: 2, hot: true, builtIn: true }),
+    Object.freeze({ name: "语言学习", multiplier: 1, hot: false, builtIn: true }),
+    Object.freeze({ name: "其他", multiplier: 1, hot: false, builtIn: true }),
+  ]);
   const SPECIAL_CARD_RARITY_ODDS = Object.freeze({ ordinary: 0.75, rare: 0.2, legendary: 0.05 });
   const SPECIAL_CARD_CATALOG = Object.freeze([
     { id: "again", rarity: 1, icon: "🎫", name: "再来一次", description: "本次抽奖结果不满意，可以重抽一次。" },
@@ -32,6 +38,34 @@
 
   function uniqueStrings(values) {
     return [...new Set((Array.isArray(values) ? values : []).map(String))];
+  }
+
+  function normalizeTaskCategories(categories = [], tasks = []) {
+    const defaultsByName = new Map(DEFAULT_TASK_CATEGORIES.map((category) => [category.name, category]));
+    const names = [];
+    const add = (value, fallback = {}) => {
+      const name = String(typeof value === "string" ? value : value?.name || "").trim();
+      if (!name || names.includes(name)) return;
+      const builtIn = defaultsByName.get(name);
+      names.push(name);
+      result.push({
+        name,
+        multiplier: builtIn?.multiplier || Math.max(1, Number(value?.multiplier) || 1),
+        hot: builtIn?.hot || Boolean(value?.hot),
+        builtIn: builtIn?.builtIn || Boolean(value?.builtIn || fallback.builtIn),
+      });
+    };
+    const result = [];
+    DEFAULT_TASK_CATEGORIES.forEach((category) => add(category));
+    (Array.isArray(categories) ? categories : []).forEach((category) => add(category));
+    (Array.isArray(tasks) ? tasks : []).forEach((task) => add(task?.category));
+    return result;
+  }
+
+  function getTaskCategory(state, categoryName) {
+    const name = String(categoryName || "其他").trim() || "其他";
+    const categories = normalizeTaskCategories(state?.taskCategories, state?.tasks);
+    return categories.find((category) => category.name === name) || { name, multiplier: 1, hot: false, builtIn: false };
   }
 
   function normalizeSpecialCards(cards) {
@@ -180,6 +214,7 @@
   function normalizeState(state = {}, defaults = {}) {
     const out = Object.assign(clone(defaults), clone(state));
     out.tasks = (Array.isArray(state.tasks) ? state.tasks : out.tasks || []).map(normalizeTask);
+    out.taskCategories = normalizeTaskCategories(out.taskCategories, out.tasks);
     out.challenges = (Array.isArray(state.challenges) ? state.challenges : out.challenges || []).map(normalizeChallenge);
     out.score = Number(out.score) || 0;
     out.earned = Number(out.earned) || 0;
@@ -331,9 +366,12 @@
       return { state: refreshChallengeStatuses(next, nowMs), awarded: 0 };
     }
 
+    const category = getTaskCategory(next, task.category);
+    const categoryMultiplier = Math.max(1, Number(category.multiplier) || 1);
     const multiplier = Math.max(1, Number(next.nextTaskMultiplier) || 1);
     const basePoints = Math.max(0, Number(task.points) || 0);
-    const points = Math.max(0, Math.min(basePoints * multiplier, basePoints + 3));
+    const categorizedPoints = basePoints * categoryMultiplier;
+    const points = Math.max(0, Math.min(categorizedPoints * multiplier, categorizedPoints + 3));
     next.nextTaskMultiplier = 1;
     if (!task.repeatable) task.completed = true;
     next.score = (Number(next.score) || 0) + points;
@@ -353,17 +391,26 @@
         challenge.completedTaskIds.push(String(task.id));
       }
     });
-    return { state: refreshChallengeStatuses(next, nowMs), awarded: points };
+    return {
+      state: refreshChallengeStatuses(next, nowMs),
+      awarded: points,
+      category: category.name,
+      categoryMultiplier,
+      hot: category.hot,
+    };
   }
 
   root.LevelUpLifeLogic = {
     SPECIAL_CARD_CATALOG,
     SPECIAL_CARD_RARITY_ODDS,
+    DEFAULT_TASK_CATEGORIES,
     NORMAL_REWARD_TIER_ODDS,
     NORMAL_REWARD_TIERS,
     NORMAL_BOX_SIZE,
     NORMAL_BOX_TIER_COUNTS,
     normalizeTask,
+    normalizeTaskCategories,
+    getTaskCategory,
     normalizeChallenge,
     normalizeState,
     claimDailyLuckyCoin,

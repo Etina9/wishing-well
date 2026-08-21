@@ -73,6 +73,11 @@
     input:focus,select:focus,textarea:focus{border-color:#9b87ff;box-shadow:0 0 0 3px rgba(111,85,255,.09)}
     .list{display:grid;gap:9px}
     .item{border:1px solid var(--line);border-radius:10px;padding:13px;background:var(--panel)}
+    .item.hot-task{border-color:#e5a08d;background:linear-gradient(135deg,#fffefa 0%,#fff5ed 100%);box-shadow:0 4px 16px rgba(194,91,62,.13)}
+    .hot-task .pts{color:#c45b3d}
+    .hot-task .pts strong{display:block;font-size:18px;line-height:1}
+    .hot-task .pts small{display:block;margin-top:5px;color:#c45b3d;font-size:10px;letter-spacing:.02em}
+    .hot-badge{background:#fff0e8;border-color:#efb39c;color:#b84d31;font-weight:900}
     .item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
     .item h3{font-size:15px;margin:0 0 6px}
     .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -142,6 +147,8 @@
     .history-row strong{display:block;margin-bottom:3px}
     .history-row span{color:var(--muted)}
     .empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed #c7d3d5;border-radius:8px;font-size:13px}
+    .celebration-toast{position:fixed;z-index:80;left:50%;top:calc(18px + var(--safe-top));transform:translate(-50%,-18px) scale(.96);width:min(92vw,360px);padding:12px 16px;border:1px solid #efb39c;border-radius:999px;background:#fff7ef;color:#a74830;box-shadow:0 8px 24px rgba(153,73,43,.18);font-size:13px;font-weight:900;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+    .celebration-toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
     .bottom{
       position:fixed;z-index:30;left:0;right:0;bottom:0;
       background:rgba(255,253,248,.96);
@@ -299,6 +306,7 @@
       <h2>⚙️ 数据与设置</h2>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">💾 导出存档</button>
+        <button class="btn" onclick="openCategorySheet()">🏷️ 管理任务分类</button>
         <label class="btn" style="display:inline-block">
           📥 导入存档
           <input type="file" accept=".json,application/json" onchange="importData(event)" style="display:none">
@@ -309,6 +317,8 @@
     </section>
   </main>
 </div>
+
+<div id="celebrationToast" class="celebration-toast" role="status" aria-live="polite"></div>
 
 <nav class="bottom">
   <div class="bottom-inner">
@@ -433,6 +443,16 @@
   </div>
 </div>
 
+<div id="categorySheet" class="sheet" onclick="sheetBackdrop(event,'categorySheet')">
+  <div class="sheet-panel">
+    <h2>🏷️ 任务分类</h2>
+    <p class="sub">新增分类默认按 1 倍积分。面试分类是内置 HOT 分类，固定按 2 倍加分。</p>
+    <div class="field"><label>新增分类</label><div class="wish-row"><input id="newCategoryName" placeholder="例如：健康 / 阅读 / 家务"><button class="btn primary" onclick="addTaskCategory()">添加</button></div></div>
+    <div id="taskCategories" class="list" style="margin-top:12px"></div>
+    <button class="btn" onclick="closeSheet('categorySheet')" style="margin-top:14px">关闭</button>
+  </div>
+</div>
+
 <script src="./level-up-life-logic.js?v=11"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -441,6 +461,7 @@ const STORAGE='level-up-life-v6';
 
 const defaults={
   version:9, score:0, earned:0, spent:0,
+  taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES),
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
     {id:uid(),name:'完成30分钟运动',category:'减肥 / 运动',points:1,note:''},
@@ -531,6 +552,7 @@ function normalize(s){
 }
 let state=loadState();
 let editingTaskId=null;
+let celebrationTimer=null;
 
 function save(){localStorage.setItem(STORAGE,JSON.stringify(state));render()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -653,14 +675,43 @@ function openTaskSheet(id=null){
   editingTaskId=id;document.getElementById('taskSheetTitle').textContent=id?'编辑任务':'添加任务';
   if(id){
     const t=state.tasks.find(x=>x.id===id);
+    renderTaskCategoryOptions(t.category);
     $('taskName').value=t.name;$('taskCategory').value=t.category;$('taskPoints').value=t.points;$('taskNote').value=t.note||'';
     $('taskRepeatable').value=t.repeatable===false?'false':'true';
     $('taskRepeatable').disabled=t.repeatable===false&&t.completed;
   }else{
+    renderTaskCategoryOptions('减肥 / 运动');
     $('taskName').value='';$('taskCategory').value='减肥 / 运动';$('taskPoints').value=1;$('taskNote').value='';
     $('taskRepeatable').value='true';$('taskRepeatable').disabled=false;
   }
   document.getElementById('taskSheet').classList.add('show');
+}
+function renderTaskCategoryOptions(selected=''){
+  const select=$('taskCategory');if(!select)return;
+  const categories=state.taskCategories||LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES;
+  select.innerHTML=categories.map(category=>'<option value="'+esc(category.name)+'">'+esc(category.name)+(category.hot?' · HOT ×2':'')+'</option>').join('');
+  const names=categories.map(category=>category.name);
+  select.value=names.includes(selected)?selected:(names.includes('其他')?'其他':names[0]);
+}
+function renderTaskCategories(){
+  $('taskCategories').innerHTML=state.taskCategories.map(category=>`<div class="item"><div class="item-top"><div><h3>${esc(category.name)}</h3><div class="meta"><span class="tag">${category.hot?'🔥 HOT · ×2':'普通 · ×1'}</span>${category.builtIn?'<span class="tag">内置</span>':'<span class="tag">自定义</span>'}</div></div>${category.builtIn?'<span class="note">固定</span>':`<button class="btn danger" onclick="deleteTaskCategory('${esc(category.name)}')">删除</button>`}</div></div>`).join('');
+}
+function openCategorySheet(){
+  $('newCategoryName').value='';renderTaskCategories();document.getElementById('categorySheet').classList.add('show');
+}
+function addTaskCategory(){
+  const name=$('newCategoryName').value.trim();
+  if(!name)return alert('请填写分类名称。');
+  if(state.taskCategories.some(category=>category.name===name))return alert('这个分类已经存在了。');
+  state.taskCategories.push({name,multiplier:1,hot:false,builtIn:false});
+  $('newCategoryName').value='';renderTaskCategoryOptions(name);renderTaskCategories();save();
+}
+function deleteTaskCategory(name){
+  const category=state.taskCategories.find(item=>item.name===name);
+  if(!category||category.builtIn)return alert('内置分类不能删除。');
+  if(state.tasks.some(task=>task.category===name))return alert('还有任务在使用这个分类，请先编辑或删除这些任务。');
+  if(!confirm('删除分类「'+name+'」？'))return;
+  state.taskCategories=state.taskCategories.filter(item=>item.name!==name);renderTaskCategories();renderTaskCategoryOptions();save();
 }
 function closeSheet(id){document.getElementById(id).classList.remove('show')}
 function sheetBackdrop(e,id){if(e.target.id===id)closeSheet(id)}
@@ -685,7 +736,12 @@ function completeTask(id){
     return;
   }
   state=result.state;
-  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分');save();
+  log('完成任务：'+t.name,'+'+fmt(result.awarded)+' 分');save();showTaskCelebration(t,result);
+}
+function showTaskCelebration(task,result){
+  const toast=$('celebrationToast');if(!toast)return;
+  toast.textContent=result.hot?'🔥 HOT ×2 · '+task.name+' 完成 · +'+fmt(result.awarded)+' 分':'完成得漂亮！'+task.name+' · +'+fmt(result.awarded)+' 分';
+  toast.classList.add('show');clearTimeout(celebrationTimer);celebrationTimer=setTimeout(()=>toast.classList.remove('show'),2400);
 }
 function deleteTask(id){
   const used=state.challenges.some(c=>c.status==='active'&&c.goalType==='tasks'&&c.taskIds.includes(String(id)));
@@ -959,19 +1015,25 @@ function render(){
   $('score').textContent=fmt(state.score);$('earned').textContent=fmt(state.earned);$('spent').textContent=fmt(state.spent);
   renderSpecialCards();
   const activeTasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
-  $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>`
-    <div class="item">
-      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${t.repeatable===false?'<span class="tag">一次性</span>':'<span class="tag">循环</span>'}${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">+${fmt(t.points)}</div></div>
+  $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>{
+    const category=LevelUpLifeLogic.getTaskCategory(state,t.category),hot=category.hot,displayPoints=t.points*category.multiplier;
+    return `
+    <div class="item ${hot?'hot-task':''}">
+      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}${t.repeatable===false?'<span class="tag">一次性</span>':'<span class="tag">循环</span>'}${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">${hot?'<strong>+ '+fmt(displayPoints)+'</strong><small>原 '+fmt(t.points)+' 分 · ×2</small>':'+'+fmt(displayPoints)}</div></div>
       ${t.note?`<div class="note">${esc(t.note)}</div>`:''}
       <div class="item-actions"><button class="btn good" onclick="completeTask('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
-    </div>`).join(''):'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
+    </div>`;
+  }).join(''):'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
 
   const archivedTasks=state.tasks.filter(t=>t.repeatable===false&&t.completed);
-  $('completedTaskList').innerHTML=archivedTasks.length?archivedTasks.map(t=>`
+  $('completedTaskList').innerHTML=archivedTasks.length?archivedTasks.map(t=>{
+    const category=LevelUpLifeLogic.getTaskCategory(state,t.category),hot=category.hot,displayPoints=t.points*category.multiplier;
+    return `
     <div class="item archived-task">
-      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">一次性 · 已完成</span><span class="tag">${esc(t.category)}</span></div></div><div class="pts">+${fmt(t.points)}</div></div>
+      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">一次性 · 已完成</span><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}</div></div><div class="pts">+${fmt(displayPoints)}</div></div>
       <div class="item-actions"><button class="btn" onclick="openTaskSheet('${t.id}')">查看 / 编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
-    </div>`).join(''):'<div class="empty">完成后的一次性任务会归档在这里。</div>';
+    </div>`;
+  }).join(''):'<div class="empty">完成后的一次性任务会归档在这里。</div>';
 
   $('challengeList').innerHTML=state.challenges.length?state.challenges.map(c=>{
     const p=LevelUpLifeLogic.getChallengeProgress(c,state,Date.now());

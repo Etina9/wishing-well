@@ -86,6 +86,17 @@
     .note{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.45}
     .item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
     .item-actions .btn{padding:7px 9px;font-size:12px}
+    .task-list{gap:6px}
+    .task-list .item{padding:10px 12px;border-radius:12px}
+    .task-list .item-top{align-items:center}
+    .task-list .item h3{font-size:15px;margin-bottom:4px}
+    .task-list .meta{gap:4px}
+    .task-list .tag{padding:3px 6px}
+    .task-list .note{margin-top:5px}
+    .task-list .checkin-details{margin-top:5px;padding-top:4px}
+    .task-list .checkin-details summary{min-height:34px}
+    .task-list .item-actions{margin-top:6px}
+    .task-list .item-actions .btn{min-height:38px;padding:6px 9px}
     .challenge-card{background:#fffdf8}
     .challenge-card.claimable{border-color:#abd1c3;background:#f3faf7}
     .challenge-card.expired{opacity:.78;background:#f5f1ea}
@@ -113,6 +124,8 @@
     .checkin-details summary{cursor:pointer;color:var(--accent);font-size:12px;font-weight:800;min-height:44px;display:flex;align-items:center}
     .checkin-details .checkin-grid{margin-top:6px}
     .checkin-hint{font-size:11px;color:var(--muted);margin-top:7px}
+    .overview-checkin-details{margin-top:9px;border-top:1px solid var(--line);padding-top:4px}
+    .overview-checkin-details summary{min-height:38px;color:var(--accent);font-size:12px;font-weight:800;display:flex;align-items:center;cursor:pointer}
     .pool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .pool{
       padding:14px;border-radius:10px;border:1px solid var(--line);
@@ -248,7 +261,7 @@
       <h2>📋 任务池</h2>
       <p class="sub">以 0.5～2 分的小任务为主，完成就即时加分。任务作为模板保留，可以重复完成。</p>
       <div class="toolbar"><button class="btn primary" onclick="openTaskSheet()">＋ 添加任务</button></div>
-      <div id="taskList" class="list" style="margin-top:12px"></div>
+      <div id="taskList" class="list task-list" style="margin-top:12px"></div>
     </section>
 
     <section class="card">
@@ -540,14 +553,14 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=16"></script>
+<script src="./level-up-life-logic.js?v=17"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:12, score:0, earned:0, spent:0,
+  version:13, score:0, earned:0, spent:0,
   taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
@@ -888,7 +901,7 @@ function renderCheckInGridMarkup(grid,taskId=null,overall=false){
 function renderCheckInOverview(){
   const grid=LevelUpLifeLogic.getOverallCheckInGrid(state,Date.now(),4);
   const days=grid.weeks.flat(),activeDays=days.filter(day=>day.count>0).length,total=days.reduce((sum,day)=>sum+day.count,0),today=days.find(day=>day.isToday);
-  $('checkInOverview').innerHTML='<div class="checkin-summary"><span>最近 4 周 · <strong>'+activeDays+'</strong> 个打卡日</span><span>共完成 <strong>'+total+'</strong> 次'+(today?' · 今天 '+today.count+' 次':'')+'</span></div>'+renderCheckInGridMarkup(grid,null,true)+'<div class="checkin-hint">每个格子代表一天，数字是当天完成的任务数。</div>';
+  $('checkInOverview').innerHTML='<div class="checkin-summary"><span>最近 4 周 · <strong>'+activeDays+'</strong> 个打卡日</span><span>共完成 <strong>'+total+'</strong> 次'+(today?' · 今天 '+today.count+' 次':'')+'</span></div><details class="overview-checkin-details"><summary>查看最近 4 周打卡格</summary>'+renderCheckInGridMarkup(grid,null,true)+'<div class="checkin-hint">每个格子代表一天，数字是当天完成的任务数。</div></details>';
 }
 function renderTaskCheckIn(task){
   const grid=LevelUpLifeLogic.getTaskCheckInGrid(state,task.id,Date.now(),4);

@@ -786,7 +786,7 @@ function renderCheckInGridMarkup(grid,taskId=null,overall=false){
   const weekdays='<div class="checkin-weekdays">'+CHECKIN_WEEKDAYS.map(day=>'<span>'+day+'</span>').join('')+'</div>';
   const cells=grid.weeks.flat().map(day=>{
     const checked=overall?day.count>0:day.checked;
-    const label=overall?(day.count?String(day.count):'·'):(checked?'✓':checkInDateLabel(day.dateKey).slice(-2));
+    const label=overall?(day.count?'✓':'·'):(checked?'✓':checkInDateLabel(day.dateKey).slice(-2));
     const classes='checkin-day'+(checked?' checked':'')+(day.isToday?' today':'')+(day.isFuture?' future':'')+(overall?' overall-count':'');
     const title=overall?`${day.dateKey} · ${day.count} 个任务完成`:`${day.dateKey} · ${checked?'已打卡':'未打卡'}`;
     if(overall)return '<div class="'+classes+'" title="'+esc(title)+'">'+label+'</div>';

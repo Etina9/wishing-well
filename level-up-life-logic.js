@@ -16,15 +16,13 @@
     { id: "again", rarity: 1, icon: "🎫", name: "再来一次", description: "本次抽奖结果不满意，可以重抽一次。" },
     { id: "free-draw", rarity: 1, icon: "🎁", name: "免费一番赏", description: "免费抽一次普通一番赏。" },
     { id: "two-choice", rarity: 1, icon: "👀", name: "二选一", description: "抽两个结果，选择其中一个。" },
-    { id: "hold-prize", rarity: 1, icon: "💾", name: "保留卡", description: "抽到奖励后可以暂时不兑换，留到以后。" },
+    { id: "makeup-pass", rarity: 1, icon: "🩹", name: "补卡券", description: "补记过去漏掉的一次任务打卡，不额外获得积分。" },
     { id: "dessert-pass", rarity: 1, icon: "🎫", name: "免罪券", description: "今天可以吃一次想吃的甜品，不扣减计划。" },
     { id: "coffee-pass", rarity: 1, icon: "☕", name: "咖啡券", description: "兑换一次喜欢的饮品，不扣减计划。" },
     { id: "rest-pass", rarity: 1, icon: "🛋️", name: "休息券", description: "无条件休息 30 分钟。" },
-    { id: "delay-pass", rarity: 1, icon: "⏰", name: "延期券", description: "将一个普通任务顺延一天。" },
     { id: "upgrade-draw", rarity: 2, icon: "⬆️", name: "升赏卡", description: "下一次普通一番赏抽 3 个结果，选择 1 个。" },
     { id: "wish-sniper", rarity: 2, icon: "🎯", name: "心愿狙击", description: "从普通一番赏随机抽 3 个结果，自己选 1 个。" },
     { id: "free-medium-draw", rarity: 2, icon: "🎫", name: "免费一番赏·稀有", description: "免费抽一次普通一番赏。" },
-    { id: "regret-pill", rarity: 2, icon: "🔁", name: "后悔药", description: "最近一次抽奖可以重抽。" },
     { id: "task-boost", rarity: 2, icon: "✨", name: "升级券", description: "下一次任务积分增加 50%，额外增加最多 3 分。" },
     { id: "direct-redeem", rarity: 3, icon: "🌟", name: "指定兑换", description: "从小赏区的现有奖励中任选一个。" },
     { id: "free-large-draw", rarity: 3, icon: "🎁", name: "免费一番赏·传说", description: "免费抽一次普通一番赏。" },
@@ -147,9 +145,10 @@
     const out = {};
     if (!cards || typeof cards !== "object") return out;
     Object.entries(cards).forEach(([id, count]) => {
-      if (!knownIds.has(id)) return;
+      const migratedId = id === "delay-pass" ? "makeup-pass" : id;
+      if (!knownIds.has(migratedId)) return;
       const safeCount = Math.max(0, Math.floor(Number(count) || 0));
-      if (safeCount > 0) out[id] = safeCount;
+      if (safeCount > 0) out[migratedId] = (out[migratedId] || 0) + safeCount;
     });
     return out;
   }

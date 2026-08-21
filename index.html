@@ -554,14 +554,14 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=18"></script>
+<script src="./level-up-life-logic.js?v=19"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const STORAGE='level-up-life-v6';
 
 const defaults={
-  version:14, score:0, earned:0, spent:0,
+  version:15, score:0, earned:0, spent:0,
   taskCategories:clone(LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES), taskCheckIns:{},
   luckyCoins:0, specialCardPity:0, specialCards:{}, dailyTaskCompletions:{}, luckyCoinAwards:{}, dailyLuckyCoinDate:'', nextTaskMultiplier:1, lastSpecialCard:null, lastDraw:null, heldPrizes:[], challengePauseUsed:{},
   tasks:[
@@ -1061,11 +1061,20 @@ function useSpecialCard(id){
     if(!confirm('确认实现这个心愿：'+wish.trim()+'？'))return;
     consumeSpecialCard(id);addUsedPrizeUsage(wish.trim(),'特殊卡：愿望成真','special-card-redeem','通过愿望成真直接兑换');log('愿望成真：'+wish.trim(),'✨ 100 元以内');save();return;
   }
-  if(id==='hold-prize'){
-    if(!state.lastDraw)return alert('还没有最近一次抽奖结果。');
-    consumeSpecialCard(id);state.heldPrizes.unshift(state.lastDraw);log('保留最近一次抽奖结果','💾 '+state.lastDraw.prize);save();return;
+  if(id==='makeup-pass'){
+    const tasks=state.tasks.filter(task=>task.name);
+    if(!tasks.length)return alert('现在还没有可补卡的任务。');
+    const taskChoice=prompt('输入要补卡的任务编号：\n'+tasks.map((task,index)=>(index+1)+' · '+task.name).join('\n'),'1');
+    if(!/^[1-9]\d*$/.test(taskChoice)||Number(taskChoice)>tasks.length)return;
+    const task=tasks[Number(taskChoice)-1];
+    const dateKey=prompt('输入要补记的日期（YYYY-MM-DD）：',localDateKey());
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)||dateKey>localDateKey())return alert('请输入不晚于今天的有效日期。');
+    if(state.taskCheckIns?.[task.id]?.[dateKey])return alert('这一天已经打过卡了，不需要使用补卡券。');
+    const result=LevelUpLifeLogic.recordTaskCheckIn(state,task.id,dateKey,true);
+    if(!result.changed)return alert('补卡失败，请稍后再试。');
+    state=result.state;consumeSpecialCard(id);log('使用补卡券：'+task.name,'🩹 '+dateKey+' · 仅补记打卡');save();return;
   }
-  if(id==='again'||id==='regret-pill'){
+  if(id==='again'){
     if(!state.lastDraw)return alert('还没有可以重抽的结果。');
     const last=state.lastDraw;consumeSpecialCard(id);draw(last.cost,true);return;
   }
@@ -1077,7 +1086,7 @@ function useSpecialCard(id){
     const selected=chooseNormalResults(3);if(!selected)return;
     state=selected.state;consumeSpecialCard(id);state.lastDraw={cost:5,prize:selected.reward.name,budget:'普通一番赏',tier:selected.reward.tier,time:Date.now(),free:true};addPrizeUsage(selected.reward.name,'特殊卡：心愿狙击','special-card-draw',state.lastDraw.time);log('使用心愿狙击：'+selected.reward.name,'🎯 普通一番赏');save();return;
   }
-  if(['dessert-pass','coffee-pass','rest-pass','delay-pass','slack-pass'].includes(id)){
+  if(['dessert-pass','coffee-pass','rest-pass','slack-pass'].includes(id)){
     consumeSpecialCard(id);log('使用 '+card.name,card.description);save();return;
   }
   alert(card.description);
@@ -1171,7 +1180,12 @@ function renderSpecialCards(){
   $('specialCardStatus').textContent=(state.specialCardPity>=4?'下一抽：保底（★★ 95% / ★★★ 5%）':'普通概率 · 已连续 '+state.specialCardPity+' 次 ★')+' · 可抽 '+drawCount+' 次';
   const owned=LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>Number(state.specialCards[card.id])>0);
   $('specialCardList').innerHTML=owned.length?owned.map(card=>`<div class="card-entry"><div><div class="card-name rarity-${card.rarity}">${card.icon} ${card.name} ×${state.specialCards[card.id]} <span class="tag">${rarityLabel(card.rarity)}</span></div><div class="card-desc">${esc(card.description)}</div></div><button class="btn" onclick="useSpecialCard('${card.id}')">使用</button></div>`).join(''):'<div class="empty">还没有特殊卡，先攒幸运币抽一张。</div>';
-  $('specialCardCatalog').innerHTML=[1,2,3].map(rarity=>`<div class="note"><strong class="rarity-${rarity}">${rarityLabel(rarity)}</strong> · ${rarity===1?'75%':rarity===2?'20%':'5%'}<div class="card-catalog">${LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>card.rarity===rarity).map(card=>`<div class="card-entry"><div><div class="card-name">${card.icon} ${card.name}</div><div class="card-desc">${esc(card.description)}</div></div><span class="tag">${rarity===1?'9.375%':rarity===2?'4%':'1%'}</span></div>`).join('')}</div></div>`).join('');
+  const rarityOdds={1:75,2:20,3:5};
+  $('specialCardCatalog').innerHTML=[1,2,3].map(rarity=>{
+    const cards=LevelUpLifeLogic.SPECIAL_CARD_CATALOG.filter(card=>card.rarity===rarity);
+    const perCard=cards.length?(rarityOdds[rarity]/cards.length).toFixed(2):'0';
+    return `<div class="note"><strong class="rarity-${rarity}">${rarityLabel(rarity)}</strong> · ${rarityOdds[rarity]}%<div class="card-catalog">${cards.map(card=>`<div class="card-entry"><div><div class="card-name">${card.icon} ${card.name}</div><div class="card-desc">${esc(card.description)}</div></div><span class="tag">${perCard}%</span></div>`).join('')}</div></div>`;
+  }).join('');
   const last=state.lastSpecialCard&&cardById(state.lastSpecialCard.id);
   $('specialCardResult').innerHTML=last?'上次抽到：<b class="rarity-'+last.rarity+'">'+last.icon+' '+esc(last.name)+'</b> · '+rarityLabel(last.rarity)+(state.lastSpecialCard.pity?' · 已触发保底':''):'抽到的卡会显示在这里。';
 }

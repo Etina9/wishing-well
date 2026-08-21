@@ -97,6 +97,26 @@
     .task-list .checkin-details summary{min-height:34px}
     .task-list .item-actions{margin-top:6px}
     .task-list .item-actions .btn{min-height:38px;padding:6px 9px}
+    .task-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;min-height:64px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);touch-action:pan-y;overflow:hidden;transition:background .16s ease,transform .16s ease,border-color .16s ease}
+    .task-row.hot-task{border-color:#e5a08d;background:#fff8f0}
+    .task-row.swiping{background:#eaf6f0;border-color:#acd5c1}
+    .task-row.completed-flash{background:#e5f2ed}
+    .task-main{min-width:0;width:100%;padding:0;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer}
+    .task-name{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:850}
+    .task-points{font-size:14px;font-weight:900;color:var(--accent);white-space:nowrap}
+    .task-row.hot-task .task-points{color:#bd563c}
+    .task-row.hot-task .task-points::after{content:' 🔥';font-size:12px}
+    .task-actions{display:flex;align-items:center;gap:2px}
+    .task-action-icon{width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:10px;background:transparent;color:#5f777f;font-size:18px;cursor:pointer}
+    .task-action-icon:hover,.task-action-icon:focus-visible{background:#edf2f2;color:var(--accent)}
+    .task-action-icon.task-delete{color:#bc655b}
+    .task-swipe-label{position:absolute;inset:0;width:100%;display:flex;align-items:center;padding:0 18px;background:#dcefe7;color:#27745a;font-weight:900;transform:translateX(-100%);transition:transform .16s ease;pointer-events:none;z-index:2}
+    .task-row.swiping .task-swipe-label{transform:translateX(0)}
+    .task-gesture-hint{font-size:11px;color:var(--muted);margin:8px 2px 0}
+    .task-archived-row{opacity:.62}
+    .task-detail-summary{padding:12px;border:1px solid var(--line);border-radius:10px;background:#fffdf8;line-height:1.6}
+    .task-detail-summary strong{font-size:17px}
+    .task-detail-checkin{margin-top:12px}
     .challenge-card{background:#fffdf8}
     .challenge-card.claimable{border-color:#abd1c3;background:#f3faf7}
     .challenge-card.expired{opacity:.78;background:#f5f1ea}
@@ -471,6 +491,18 @@
   </div>
 </div>
 
+<div id="taskDetailsSheet" class="sheet" onclick="sheetBackdrop(event,'taskDetailsSheet')">
+  <div class="sheet-panel">
+    <h2 id="taskDetailsTitle">任务详情</h2>
+    <div id="taskDetailsSummary" class="task-detail-summary"></div>
+    <div id="taskDetailsCheckIn" class="task-detail-checkin"></div>
+    <div class="toolbar" style="margin-top:14px">
+      <button class="btn primary" onclick="editTaskFromDetails()">编辑任务</button>
+      <button class="btn" onclick="closeSheet('taskDetailsSheet')">关闭</button>
+    </div>
+  </div>
+</div>
+
 <div id="challengeSheet" class="sheet" onclick="sheetBackdrop(event,'challengeSheet')">
   <div class="sheet-panel">
     <h2>新增限时挑战</h2>
@@ -554,7 +586,7 @@
   </div>
 </div>
 
-<script src="./level-up-life-logic.js?v=19"></script>
+<script src="./level-up-life-logic.js?v=20"></script>
 <script>
 const $=id=>document.getElementById(id);
 const uid=()=> 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
@@ -797,6 +829,22 @@ function openTaskSheet(id=null){
   }
   document.getElementById('taskSheet').classList.add('show');
 }
+function openTaskDetails(id){
+  if(Date.now()<suppressTaskDetailUntil)return;
+  const task=state.tasks.find(item=>item.id===id);
+  if(!task)return;
+  $('taskDetailsSheet').dataset.taskId=task.id;
+  $('taskDetailsTitle').textContent=task.name;
+  const category=LevelUpLifeLogic.getTaskCategory(state,task.category),displayPoints=task.points*category.multiplier;
+  $('taskDetailsSummary').innerHTML='<strong>'+esc(task.name)+'</strong><div class="note">'+(category.hot?'🔥 HOT · ':'')+'完成后获得 '+fmt(displayPoints)+' 分 · '+(task.repeatable===false?'一次性任务':'循环任务')+'</div>'+(task.note?'<div class="note">完成标准：'+esc(task.note)+'</div>':'');
+  $('taskDetailsCheckIn').innerHTML=renderTaskCheckIn(task,true);
+  $('taskDetailsSheet').classList.add('show');
+}
+function editTaskFromDetails(){
+  const id=$('taskDetailsSheet').dataset.taskId;
+  closeSheet('taskDetailsSheet');
+  if(id)openTaskSheet(id);
+}
 function renderTaskCategoryOptions(selected=''){
   const select=$('taskCategory');if(!select)return;
   const categories=state.taskCategories||LevelUpLifeLogic.DEFAULT_TASK_CATEGORIES;
@@ -904,10 +952,10 @@ function renderCheckInOverview(){
   const days=grid.weeks.flat(),activeDays=days.filter(day=>day.count>0).length,total=days.reduce((sum,day)=>sum+day.count,0),today=days.find(day=>day.isToday);
   $('checkInOverview').innerHTML='<div class="checkin-summary"><span>最近 4 周 · <strong>'+activeDays+'</strong> 个打卡日</span><span>共完成 <strong>'+total+'</strong> 次'+(today?' · 今天 '+today.count+' 次':'')+'</span></div><details class="overview-checkin-details"><summary>查看最近 4 周打卡格</summary>'+renderCheckInGridMarkup(grid,null,true)+'<div class="checkin-hint">每个格子代表一天，数字是当天完成的任务数。</div></details>';
 }
-function renderTaskCheckIn(task){
+function renderTaskCheckIn(task,expanded=false){
   const grid=LevelUpLifeLogic.getTaskCheckInGrid(state,task.id,Date.now(),4);
   const checked=grid.weeks.flat().filter(day=>day.checked).length;
-  return '<details class="checkin-details"><summary>📅 最近 4 周打卡 · '+checked+' / 28 天</summary>'+renderCheckInGridMarkup(grid,task.id,false)+'<div class="checkin-hint">点击格子可以补记或取消这一天的打卡。</div></details>';
+  return '<details class="checkin-details" '+(expanded?'open':'')+'><summary>📅 最近 4 周打卡 · '+checked+' / 28 天</summary>'+renderCheckInGridMarkup(grid,task.id,false)+'<div class="checkin-hint">点击格子可以补记或取消这一天的打卡。</div></details>';
 }
 function toggleTaskCheckIn(taskId,dateKey){
   if(dateKey>localDateKey())return;
@@ -1266,33 +1314,77 @@ function resetAll(){
   }
 }
 
+let taskGesture={id:'',pointerId:null,startX:0,startY:0,row:null,longPressTimer:null,moved:false};
+let suppressTaskDetailUntil=0;
+function clearTaskGesture(){
+  clearTimeout(taskGesture.longPressTimer);
+  taskGesture.row?.classList.remove('swiping');
+  taskGesture={id:'',pointerId:null,startX:0,startY:0,row:null,longPressTimer:null,moved:false};
+}
+function completeTaskFromGesture(id,row){
+  suppressTaskDetailUntil=Date.now()+800;
+  row?.classList.add('completed-flash');
+  setTimeout(()=>row?.classList.remove('completed-flash'),360);
+  openTaskCompletionSheet(id);
+}
+function bindTaskGestures(){
+  const list=$('taskList');if(!list)return;
+  list.onpointerdown=e=>{
+    const row=e.target.closest('[data-task-gesture]');
+    if(!row||e.target.closest('.task-actions'))return;
+    clearTaskGesture();
+    taskGesture={id:row.dataset.taskGesture,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,row,longPressTimer:null,moved:false};
+    row.setPointerCapture?.(e.pointerId);
+    taskGesture.longPressTimer=setTimeout(()=>{
+      if(!taskGesture.moved){suppressTaskDetailUntil=Date.now()+800;openTaskCompletionSheet(taskGesture.id);}
+    },500);
+  };
+  list.onpointermove=e=>{
+    if(taskGesture.pointerId!==e.pointerId)return;
+    const dx=e.clientX-taskGesture.startX,dy=e.clientY-taskGesture.startY;
+    if(Math.abs(dy)>8&&Math.abs(dy)>=Math.abs(dx)){taskGesture.moved=true;clearTimeout(taskGesture.longPressTimer);return;}
+    if(Math.abs(dx)>8){
+      taskGesture.moved=true;clearTimeout(taskGesture.longPressTimer);
+      if(dx>0)taskGesture.row?.classList.add('swiping');
+    }
+  };
+  list.onpointerup=e=>{
+    if(taskGesture.pointerId!==e.pointerId)return;
+    const dx=e.clientX-taskGesture.startX,dy=e.clientY-taskGesture.startY,row=taskGesture.row,id=taskGesture.id;
+    clearTimeout(taskGesture.longPressTimer);
+    if(row&&dx>=88&&Math.abs(dx)>=Math.abs(dy))completeTaskFromGesture(id,row);
+    clearTaskGesture();
+  };
+  list.onpointercancel=clearTaskGesture;
+}
+
+function renderTaskRow(t,archived=false){
+  const category=LevelUpLifeLogic.getTaskCategory(state,t.category),hot=category.hot,displayPoints=t.points*category.multiplier;
+  const encodedId=encodeURIComponent(t.id);
+  const rowClass='task-row'+(hot?' hot-task':'')+(archived?' task-archived-row':'');
+  const gesture=archived?'':' data-task-gesture="'+esc(t.id)+'"';
+  const swipeLabel=archived?'':'<div class="task-swipe-label" aria-hidden="true">✓ 完成</div>';
+  return '<div class="'+rowClass+'"'+gesture+'>'+
+    '<button class="task-main" type="button" aria-label="查看 '+esc(t.name)+'" onclick="openTaskDetails(decodeURIComponent(\''+encodedId+'\'))"><span class="task-name" title="'+esc(t.name)+'">'+esc(t.name)+'</span></button>'+
+    '<div class="task-points">+'+fmt(displayPoints)+'</div>'+
+    '<div class="task-actions">'+
+      '<button class="task-action-icon task-edit" aria-label="编辑 '+esc(t.name)+'" title="编辑" onclick="event.stopPropagation();openTaskSheet(decodeURIComponent(\''+encodedId+'\'))">✎</button>'+
+      '<button class="task-action-icon task-checkin" aria-label="查看 '+esc(t.name)+' 的打卡记录" title="打卡记录" onclick="event.stopPropagation();openTaskDetails(decodeURIComponent(\''+encodedId+'\'))">▦</button>'+
+      '<button class="task-action-icon task-delete" aria-label="删除 '+esc(t.name)+'" title="删除" onclick="event.stopPropagation();deleteTask(decodeURIComponent(\''+encodedId+'\'))">⌫</button>'+
+    '</div>'+swipeLabel+'</div>';
+}
+
 function render(){
   state=LevelUpLifeLogic.refreshChallengeStatuses(state,Date.now());
   $('score').textContent=fmt(state.score);$('earned').textContent=fmt(state.earned);$('spent').textContent=fmt(state.spent);
   renderCheckInOverview();
-  renderSpecialCards();
-  const activeTasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
-  $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>{
-    const category=LevelUpLifeLogic.getTaskCategory(state,t.category),hot=category.hot,displayPoints=t.points*category.multiplier;
-    return `
-    <div class="item ${hot?'hot-task':''}">
-      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}${t.repeatable===false?'<span class="tag">一次性</span>':'<span class="tag">循环</span>'}${t.note?'<span class="tag">有完成标准</span>':''}</div></div><div class="pts">${hot?'<strong>+ '+fmt(displayPoints)+'</strong><small>原 '+fmt(t.points)+' 分 · ×2</small>':'+'+fmt(displayPoints)}</div></div>
-      ${t.note?`<div class="note">${esc(t.note)}</div>`:''}
-      ${renderTaskCheckIn(t)}
-      <div class="item-actions"><button class="btn good" onclick="openTaskCompletionSheet('${t.id}')">✓ 完成</button><button class="btn" onclick="openTaskSheet('${t.id}')">编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
-    </div>`;
-  }).join(''):'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
+ renderSpecialCards();
+ const activeTasks=state.tasks.filter(t=>t.repeatable!==false||!t.completed);
+ $('taskList').innerHTML=activeTasks.length?activeTasks.map(t=>renderTaskRow(t)).join('')+'<div class="task-gesture-hint">右滑完成 · 长按可填写完成备注</div>':'<div class="empty">还没有待办任务，先加一个很小、能马上做的。</div>';
+  bindTaskGestures();
 
-  const archivedTasks=state.tasks.filter(t=>t.repeatable===false&&t.completed);
-  $('completedTaskList').innerHTML=archivedTasks.length?archivedTasks.map(t=>{
-    const category=LevelUpLifeLogic.getTaskCategory(state,t.category),hot=category.hot,displayPoints=t.points*category.multiplier;
-    return `
-    <div class="item archived-task">
-      <div class="item-top"><div><h3>${esc(t.name)}</h3><div class="meta"><span class="tag">一次性 · 已完成</span><span class="tag">${esc(t.category)}</span>${hot?'<span class="tag hot-badge">🔥 HOT · ×2</span>':''}</div></div><div class="pts">+${fmt(displayPoints)}</div></div>
-      ${renderTaskCheckIn(t)}
-      <div class="item-actions"><button class="btn" onclick="openTaskSheet('${t.id}')">查看 / 编辑</button><button class="btn danger" onclick="deleteTask('${t.id}')">删除</button></div>
-    </div>`;
-  }).join(''):'<div class="empty">完成后的一次性任务会归档在这里。</div>';
+ const archivedTasks=state.tasks.filter(t=>t.repeatable===false&&t.completed);
+ $('completedTaskList').innerHTML=archivedTasks.length?archivedTasks.map(t=>renderTaskRow(t,true)).join(''):'<div class="empty">完成后的一次性任务会归档在这里。</div>';
 
   $('challengeList').innerHTML=state.challenges.length?state.challenges.map(c=>{
     const p=LevelUpLifeLogic.getChallengeProgress(c,state,Date.now());
